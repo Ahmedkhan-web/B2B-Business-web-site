@@ -1,0 +1,258 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 244 50% 11%;
+    --foreground: 220 20% 92%;
+
+    --card: 240 25% 16%;
+    --card-foreground: 220 20% 92%;
+
+    --popover: 244 50% 11%;
+    --popover-foreground: 220 20% 92%;
+
+    --primary: 46 65% 52%;
+    --primary-foreground: 244 50% 8%;
+
+    --secondary: 173 80% 33%;
+    --secondary-foreground: 220 20% 95%;
+
+    --muted: 240 20% 18%;
+    --muted-foreground: 230 15% 60%;
+
+    --accent: 147 84% 58%;
+    --accent-foreground: 244 50% 8%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 220 20% 95%;
+
+    --border: 240 20% 22%;
+    --input: 240 20% 22%;
+    --ring: 46 65% 52%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 244 50% 9%;
+    --sidebar-foreground: 220 20% 92%;
+    --sidebar-primary: 46 65% 52%;
+    --sidebar-primary-foreground: 244 50% 8%;
+    --sidebar-accent: 240 20% 18%;
+    --sidebar-accent-foreground: 220 20% 92%;
+    --sidebar-border: 240 20% 22%;
+    --sidebar-ring: 46 65% 52%;
+
+    /* Custom tokens */
+    --navy-deep: 244 55% 10%;
+    --navy-medium: 243 40% 28%;
+    --purple-dark: 240 25% 19%;
+    --gold: 46 65% 52%;
+    --gold-light: 46 65% 65%;
+    --gold-dark: 46 65% 40%;
+    --teal: 173 80% 33%;
+    --teal-light: 147 84% 58%;
+    --glass-bg: 240 25% 19% / 0.35;
+    --glass-border: 240 20% 35% / 0.3;
+    --gradient-hero: linear-gradient(135deg, hsl(244 55% 10%) 0%, hsl(243 40% 28%) 50%, hsl(240 25% 19%) 100%);
+    --shadow-gold: 0 4px 30px hsl(46 65% 52% / 0.15);
+    --shadow-teal: 0 4px 30px hsl(173 80% 33% / 0.15);
+    --shadow-card: 0 8px 32px hsl(244 55% 10% / 0.5);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/40 backdrop-blur-xl border border-border/30 rounded-xl;
+    box-shadow: var(--shadow-card);
+  }
+
+  .glass-card-teal {
+    @apply bg-card/40 backdrop-blur-xl border rounded-xl;
+    border-color: hsl(var(--teal) / 0.2);
+    box-shadow: var(--shadow-teal);
+  }
+
+  .gold-glow {
+    box-shadow: var(--shadow-gold);
+  }
+
+  .teal-glow {
+    box-shadow: var(--shadow-teal);
+  }
+
+  .gold-underline {
+    @apply relative inline-block;
+  }
+  .gold-underline::after {
+    content: '';
+    @apply absolute w-full h-0.5 bottom-0 left-0 bg-primary origin-bottom-right transition-transform duration-300 scale-x-0;
+  }
+  .gold-underline:hover::after {
+    @apply origin-bottom-left scale-x-100;
+  }
+
+  .hover-zoom {
+    @apply transition-transform duration-500 ease-out;
+  }
+  .hover-zoom:hover {
+    @apply scale-105;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-500 ease-out;
+  }
+  .hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px hsl(244 55% 10% / 0.6), 0 0 30px hsl(46 65% 52% / 0.1);
+  }
+
+  .gradient-overlay {
+    background: linear-gradient(to top, hsl(var(--navy-deep)) 0%, hsl(var(--navy-deep) / 0.6) 40%, transparent 100%);
+  }
+
+  .hero-gradient {
+    background: linear-gradient(135deg, hsl(var(--navy-deep) / 0.9) 0%, hsl(var(--navy-medium) / 0.75) 50%, hsl(var(--purple-dark) / 0.85) 100%);
+  }
+
+  .section-gradient {
+    background: linear-gradient(180deg, hsl(var(--navy-deep)) 0%, hsl(var(--navy-medium) / 0.2) 50%, hsl(var(--navy-deep)) 100%);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--navy-deep)), hsl(var(--navy-medium)), hsl(var(--purple-dark)));
+  }
+
+  .gradient-teal {
+    background: linear-gradient(135deg, hsl(var(--teal)), hsl(var(--teal-light)));
+  }
+
+  .gradient-gold {
+    background: linear-gradient(135deg, hsl(var(--gold-dark)), hsl(var(--gold)), hsl(var(--gold-light)));
+  }
+
+  .btn-gradient-gold {
+    background: linear-gradient(135deg, hsl(var(--gold-dark)), hsl(var(--gold)));
+    color: hsl(var(--navy-deep));
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease-in-out infinite;
+  }
+
+  .btn-gradient-teal {
+    background: linear-gradient(135deg, hsl(var(--teal)), hsl(var(--teal-light)));
+    color: hsl(var(--navy-deep));
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease-in-out infinite;
+  }
+
+  .gradient-border {
+    position: relative;
+    border: none;
+  }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, hsl(var(--gold) / 0.4), hsl(var(--teal) / 0.4), hsl(var(--gold) / 0.2));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+  }
+
+  .animate-fade-in-up-delay {
+    animation: fadeInUp 0.8s ease-out 0.2s forwards;
+    opacity: 0;
+  }
+
+  .animate-fade-in-up-delay-2 {
+    animation: fadeInUp 0.8s ease-out 0.4s forwards;
+    opacity: 0;
+  }
+
+  .animate-scroll-reveal {
+    animation: scrollReveal 0.6s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scrollReveal {
+    from {
+      opacity: 0;
+      transform: translateY(40px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--gold) / 0.1); }
+    50% { box-shadow: 0 0 40px hsl(var(--gold) / 0.25); }
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 0%, hsl(var(--gold) / 0.1) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+}
