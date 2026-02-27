@@ -11,7 +11,11 @@ import {
   Building2,
   LayoutDashboard,
   Settings,
-  LogOut
+  LogOut,
+  Home,
+  Info,
+  Package,
+  Phone
 } from "lucide-react";
 import { useQuoteStore } from "@/lib/quoteStore";
 import Logo from "@/components/Logo";
@@ -27,10 +31,10 @@ import {
 import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
-  { label: "Home", path: "/" },
-  { label: "About Us", path: "/about" },
-  { label: "Products", path: "/products" },
-  { label: "Contact Us", path: "/contact" },
+  { label: "Home", path: "/", icon: Home },
+  { label: "About Us", path: "/about", icon: Info },
+  { label: "Products", path: "/products", icon: Package },
+  { label: "Contact Us", path: "/contact", icon: Phone },
 ];
 
 const Navbar = () => {
@@ -77,7 +81,6 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    // Optionally redirect to home
     window.location.href = '/';
   };
 
@@ -179,12 +182,12 @@ const Navbar = () => {
                 </DropdownMenu>
               ) : (
                 <div className="flex items-center gap-2">
-                  {/* Register Dropdown */}
+                  {/* Register Dropdown - Simplified */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="outline" 
-                        className="hidden lg:flex items-center gap-2 border-primary/20 hover:border-primary/40 hover:bg-primary/5 px-4 py-2 h-10"
+                        className="hidden lg:flex items-center gap-2 border-primary/20 hover:border-primary/40 hover:bg-primary/5 px-5 py-2 h-10"
                       >
                         <UserPlus className="w-4 h-4" />
                         <span>Register</span>
@@ -192,51 +195,32 @@ const Navbar = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel>Create Account</DropdownMenuLabel>
+                      <DropdownMenuLabel className="font-semibold">Register As</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
                         <Link to="/register" className="cursor-pointer w-full">
                           <User className="w-4 h-4 mr-2" />
-                          Register as Buyer
+                          Buyer
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to="/supplier" className="cursor-pointer w-full">
                           <Building2 className="w-4 h-4 mr-2" />
-                          Register as Supplier
+                          Supplier
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  {/* Login Button */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md hover:shadow-lg transition-all duration-300 px-4 py-2 h-10"
-                      >
-                        <LogIn className="w-4 h-4 mr-2" />
-                        <span>Login</span>
-                        <ChevronDown className="w-4 h-4 ml-1" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel>Select Login Type</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link to="/login/buyer" className="cursor-pointer w-full">
-                          <User className="w-4 h-4 mr-2" />
-                          Buyer Login
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/login/supplier" className="cursor-pointer w-full">
-                          <Building2 className="w-4 h-4 mr-2" />
-                          Supplier Login
-                        </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {/* Login Button - Connected to unified login page */}
+                  <Link to="/login/buyer">
+                    <Button 
+                      className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md hover:shadow-lg transition-all duration-300 px-5 py-2 h-10"
+                    >
+                      <LogIn className="w-4 h-4 mr-2" />
+                      <span>Login</span>
+                    </Button>
+                  </Link>
                 </div>
               )}
             </div>
@@ -253,117 +237,158 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu - Slide Over */}
+      {/* Mobile Menu - Navy Blue Background */}
       <div
-        className={`lg:hidden fixed inset-0 top-16 bg-background/98 backdrop-blur-xl transition-transform duration-300 ease-in-out transform ${
+        className={`lg:hidden fixed inset-0 top-16 transition-transform duration-300 ease-in-out transform ${
           mobileOpen ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{ height: 'calc(100vh - 64px)' }}
+        style={{ 
+          height: 'calc(100vh - 64px)',
+          backgroundColor: '#1C2E4A' // Navy blue
+        }}
       >
         <div className="container mx-auto px-4 py-6 h-full overflow-y-auto">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-6">
             {/* Navigation Links */}
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
+              <p className="text-xs font-semibold text-white/60 uppercase tracking-wider px-3 mb-3">
                 Navigation
               </p>
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`block px-3 py-3 text-base font-medium rounded-lg transition-colors ${
+                  className={`block px-4 py-3 text-base font-medium rounded-lg transition-all ${
                     location.pathname === item.path
-                      ? "text-primary bg-primary/10"
-                      : "text-foreground/80 hover:text-primary hover:bg-primary/5"
+                      ? "text-[#F5B301] bg-white/10"
+                      : "text-white hover:text-[#F5B301] hover:bg-white/5"
                   }`}
                 >
-                  {item.label}
+                  <div className="flex items-center gap-3">
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </div>
                 </Link>
               ))}
             </div>
 
-            {/* Mobile Authentication Links */}
-            <div className="border-t border-border/50 mt-4 pt-4">
+            {/* Mobile Authentication */}
+            <div className="border-t border-white/10 pt-6">
               {isAuthenticated ? (
                 <>
-                  <div className="flex items-center gap-3 px-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-lg shadow-md">
+                  <div className="flex items-center gap-4 px-3 mb-6">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F5B301] to-[#FFD700] flex items-center justify-center text-[#1C2E4A] font-bold text-xl shadow-lg">
                       {userName?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div>
-                      <p className="font-semibold">{userName || 'User'}</p>
-                      <p className="text-sm text-muted-foreground capitalize">{userType}</p>
+                      <p className="font-semibold text-white">{userName || 'User'}</p>
+                      <p className="text-sm text-white/70 capitalize flex items-center gap-1">
+                        <span className={`w-2 h-2 rounded-full ${userType === 'buyer' ? 'bg-green-400' : 'bg-blue-400'}`} />
+                        {userType}
+                      </p>
                     </div>
                   </div>
                   
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <Link
                       to={getDashboardLink()}
-                      className="flex items-center gap-3 px-3 py-3 text-base font-medium rounded-lg hover:bg-primary/5 transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 text-base font-medium rounded-lg text-white hover:bg-white/10 transition-colors"
                     >
-                      <LayoutDashboard className="w-5 h-5" />
+                      <LayoutDashboard className="w-5 h-5 text-[#F5B301]" />
                       Dashboard
                     </Link>
                     <Link
                       to={getProfileLink()}
-                      className="flex items-center gap-3 px-3 py-3 text-base font-medium rounded-lg hover:bg-primary/5 transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 text-base font-medium rounded-lg text-white hover:bg-white/10 transition-colors"
                     >
-                      <Settings className="w-5 h-5" />
+                      <Settings className="w-5 h-5 text-[#F5B301]" />
                       Profile Settings
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 px-3 py-3 text-base font-medium rounded-lg text-destructive hover:bg-destructive/5 w-full text-left transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 text-base font-medium rounded-lg text-red-300 hover:bg-white/10 w-full text-left transition-colors"
                     >
-                      <LogOut className="w-5 h-5" />
+                      <LogOut className="w-5 h-5 text-red-300" />
                       Logout
                     </button>
                   </div>
                 </>
               ) : (
                 <>
-                  {/* Register Section */}
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
+                  {/* Register Section - Simplified */}
+                  <div className="mb-6">
+                    <p className="text-sm font-semibold text-white mb-4 px-3">
                       Register
                     </p>
-                    <div className="space-y-1">
-                      <Link
-                        to="/register"
-                        className="flex items-center gap-3 px-3 py-3 text-base font-medium rounded-lg hover:bg-primary/5 transition-colors"
-                      >
-                        <User className="w-5 h-5" />
-                        As Buyer
-                      </Link>
-                      <Link
-                        to="/supplier"
-                        className="flex items-center gap-3 px-3 py-3 text-base font-medium rounded-lg hover:bg-primary/5 transition-colors"
-                      >
-                        <Building2 className="w-5 h-5" />
-                        As Supplier
-                      </Link>
-                    </div>
+                    
+                    {/* Register as Buyer */}
+                    <Link
+                      to="/register"
+                      className="block mb-3"
+                    >
+                      <div className="bg-white/10 rounded-xl p-4 hover:bg-white/15 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                            <User className="w-6 h-6 text-blue-400" />
+                          </div>
+                          <div>
+                            <span className="font-semibold text-white">Register as Buyer</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+
+                    {/* Register as Supplier */}
+                    <Link
+                      to="/supplier"
+                      className="block"
+                    >
+                      <div className="bg-white/10 rounded-xl p-4 hover:bg-white/15 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center">
+                            <Building2 className="w-6 h-6 text-amber-400" />
+                          </div>
+                          <div>
+                            <span className="font-semibold text-white">Register as Supplier</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
                   </div>
                   
-                  {/* Login Section */}
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
-                      Login
+                  {/* Login Section - Connected to unified login page */}
+                  <div className="border-t border-white/10 pt-6">
+                    <p className="text-sm font-semibold text-white mb-4 px-3">
+                      Existing User
                     </p>
-                    <div className="space-y-1">
+                    <Link
+                      to="/login/buyer"
+                      className="block w-full px-3"
+                    >
+                      <div className="bg-gradient-to-r from-[#F5B301] to-[#FFD700] rounded-xl p-4 hover:shadow-xl transition-all">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <LogIn className="w-5 h-5 text-[#1C2E4A]" />
+                            <span className="font-semibold text-[#1C2E4A]">Login</span>
+                          </div>
+                          <ChevronDown className="w-5 h-5 text-[#1C2E4A] rotate-180" />
+                        </div>
+                      </div>
+                    </Link>
+                    
+                    {/* Quick login type selection for mobile */}
+                    <div className="mt-3 grid grid-cols-2 gap-2 px-3">
                       <Link
                         to="/login/buyer"
-                        className="flex items-center gap-3 px-3 py-3 text-base font-medium rounded-lg hover:bg-primary/5 transition-colors"
+                        className="text-center py-2 text-xs bg-white/5 rounded-lg text-white/80 hover:bg-white/10 transition-colors"
                       >
-                        <User className="w-5 h-5" />
-                        Buyer Login
+                        Login as Buyer
                       </Link>
                       <Link
                         to="/login/supplier"
-                        className="flex items-center gap-3 px-3 py-3 text-base font-medium rounded-lg hover:bg-primary/5 transition-colors"
+                        className="text-center py-2 text-xs bg-white/5 rounded-lg text-white/80 hover:bg-white/10 transition-colors"
                       >
-                        <Building2 className="w-5 h-5" />
-                        Supplier Login
+                        Login as Supplier
                       </Link>
                     </div>
                   </div>

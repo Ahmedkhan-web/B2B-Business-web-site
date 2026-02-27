@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
+import logoImage from "@/assets/logo.png"; // Make sure your logo is named 'logo.png' in src/assets
 
 interface LogoProps {
   size?: "sm" | "md" | "lg";
   linkTo?: string;
   showTagline?: boolean;
   variant?: "full" | "icon" | "text";
-  imagePath?: string; // Prop for custom image path
 }
 
 const Logo = ({
@@ -13,7 +13,6 @@ const Logo = ({
   linkTo = "/",
   showTagline = true,
   variant = "full",
-  imagePath = "/src/assets/logo.png", // Default path - update this to your actual image name
 }: LogoProps) => {
   /* -------------------------------------------------------------------------- */
   /*                               BRAND COLORS                                 */
@@ -26,9 +25,9 @@ const Logo = ({
     navy: "#1C2E4A",
     navyLight: "#2C4A7A",
     white: "#FFFFFF",
-    gray: "#b8c4da",
+    gray: "#bbc7df",
     gradientStart: "#1C2E4A",
-    gradientEnd: "#b0f75f",
+    gradientEnd: "#2C4A7A",
   };
 
   /* -------------------------------------------------------------------------- */
@@ -37,7 +36,7 @@ const Logo = ({
 
   const sizes = {
     sm: {
-      icon: "w-10 h-10 sm:w-12 sm:h-12", // Increased from w-8/h-8 to w-10/h-10
+      icon: "w-10 h-10 sm:w-12 sm:h-12",
       title: "text-sm sm:text-base",
       sub: "text-[6px] sm:text-[8px]",
       taglineSpacing: "gap-0.5 sm:gap-1",
@@ -45,7 +44,7 @@ const Logo = ({
       globalText: "text-[5px] sm:text-[8px]",
     },
     md: {
-      icon: "w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20", // Increased from w-10/h-10 to w-14/h-14
+      icon: "w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20",
       title: "text-base sm:text-xl lg:text-2xl",
       sub: "text-[8px] sm:text-[10px]",
       taglineSpacing: "gap-1 sm:gap-2",
@@ -53,7 +52,7 @@ const Logo = ({
       globalText: "text-[7px] sm:text-[10px]",
     },
     lg: {
-      icon: "w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24", // Increased from w-12/h-12 to w-16/h-16
+      icon: "w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24",
       title: "text-lg sm:text-2xl lg:text-4xl",
       sub: "text-[9px] sm:text-xs",
       taglineSpacing: "gap-1.5 sm:gap-2",
@@ -70,14 +69,9 @@ const Logo = ({
 
   const LogoImage = () => (
     <img
-      src={imagePath}
+      src={logoImage}
       alt="Canadian Trading Logo"
       className={`${s.icon} transition-all duration-500 group-hover:scale-105 flex-shrink-0 object-contain rounded-full`}
-      onError={(e) => {
-        // Fallback in case image doesn't load
-        console.error('Logo image failed to load:', imagePath);
-        e.currentTarget.style.display = 'none';
-      }}
     />
   );
 

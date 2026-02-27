@@ -15,8 +15,8 @@ import Register from "./pages/Register";
 import AdminLogin from "./pages/AdminLogin";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
-import LoginBuyer from "./pages/LoginBuyer";
-import LoginSupplier from "./pages/LoginSupplier";
+import LoginBuyer from "./pages/Login";
+import LoginSupplier from "./pages/Login";
 
 const queryClient = new QueryClient();
 
