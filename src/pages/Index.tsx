@@ -12,7 +12,7 @@ const tradeProcess = [
   { step: "01", title: "Browse & Select", desc: "Explore our catalog of 100+ verified export commodities across 11 categories.", icon: Globe },
   { step: "02", title: "Request Quotation", desc: "Add products to your trade cart and submit a detailed quotation request.", icon: Ship },
   { step: "03", title: "Receive Quote", desc: "Our trade team reviews your request and sends a competitive quotation within 24 hours.", icon: BarChart3 },
-  { step: "04", title: "Confirm", desc: "Approve the quotation and complete the payment.", icon: Truck },
+  { step: "04", title: "Order Confirm", desc: "Approve the quotation and complete the payment.", icon: Truck },
   { step: "05", title: "Payment", desc: "Securely pay via bank transfer or online payment.", icon: CreditCardIcon },
   { step: "06", title: "Processing", desc: "We handle and prepare your order for shipment.", icon: CogIcon },
   { step: "07", title: "Shipping", desc: "Fast and safe delivery to your location.", icon: PackageIcon },

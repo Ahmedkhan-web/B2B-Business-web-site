@@ -3,150 +3,229 @@ import { Link } from "react-router-dom";
 interface LogoProps {
   size?: "sm" | "md" | "lg";
   linkTo?: string;
+  showTagline?: boolean;
+  variant?: "full" | "icon" | "text";
+  imagePath?: string; // Prop for custom image path
 }
 
-const Logo = ({ size = "md", linkTo = "/" }: LogoProps) => {
-  const scales = {
-    sm: { 
-      icon: "w-8 h-8", 
-      title: "text-lg", 
-      sub: "text-[9px]", 
-      gap: "gap-2" 
+const Logo = ({
+  size = "md",
+  linkTo = "/",
+  showTagline = true,
+  variant = "full",
+  imagePath = "/src/assets/logo.png", // Default path - update this to your actual image name
+}: LogoProps) => {
+  /* -------------------------------------------------------------------------- */
+  /*                               BRAND COLORS                                 */
+  /* -------------------------------------------------------------------------- */
+
+  const BRAND = {
+    yellow: "#F5B301",
+    yellowLight: "#FFE5A3",
+    black: "#0F0F0F",
+    navy: "#1C2E4A",
+    navyLight: "#2C4A7A",
+    white: "#FFFFFF",
+    gray: "#b8c4da",
+    gradientStart: "#1C2E4A",
+    gradientEnd: "#b0f75f",
+  };
+
+  /* -------------------------------------------------------------------------- */
+  /*                               SIZE SYSTEM                                  */
+  /* -------------------------------------------------------------------------- */
+
+  const sizes = {
+    sm: {
+      icon: "w-10 h-10 sm:w-12 sm:h-12", // Increased from w-8/h-8 to w-10/h-10
+      title: "text-sm sm:text-base",
+      sub: "text-[6px] sm:text-[8px]",
+      taglineSpacing: "gap-0.5 sm:gap-1",
+      dot: "text-[4px] sm:text-xs",
+      globalText: "text-[5px] sm:text-[8px]",
     },
-    md: { 
-      icon: "w-12 h-12", 
-      title: "text-2xl", 
-      sub: "text-[11px]", 
-      gap: "gap-3" 
+    md: {
+      icon: "w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20", // Increased from w-10/h-10 to w-14/h-14
+      title: "text-base sm:text-xl lg:text-2xl",
+      sub: "text-[8px] sm:text-[10px]",
+      taglineSpacing: "gap-1 sm:gap-2",
+      dot: "text-[6px] sm:text-xs",
+      globalText: "text-[7px] sm:text-[10px]",
     },
-    lg: { 
-      icon: "w-16 h-16 md:w-20 md:h-20", 
-      title: "text-4xl", 
-      sub: "text-xs", 
-      gap: "gap-4" 
+    lg: {
+      icon: "w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24", // Increased from w-12/h-12 to w-16/h-16
+      title: "text-lg sm:text-2xl lg:text-4xl",
+      sub: "text-[9px] sm:text-xs",
+      taglineSpacing: "gap-1.5 sm:gap-2",
+      dot: "text-[7px] sm:text-sm",
+      globalText: "text-[8px] sm:text-xs",
     },
   };
 
-  const s = scales[size];
+  const s = sizes[size];
 
-  const content = (
-    <div className={`flex items-center ${s.gap} group select-none`}>
-      {/* 1. The SVG Emblem - Canadian Trade Theme */}
-      <div className={`relative ${s.icon} flex-shrink-0 transition-transform duration-500 ease-out group-hover:scale-110`}>
-        <svg
-          viewBox="0 0 100 100"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full drop-shadow-lg"
+  /* -------------------------------------------------------------------------- */
+  /*                               CUSTOM IMAGE                                 */
+  /* -------------------------------------------------------------------------- */
+
+  const LogoImage = () => (
+    <img
+      src={imagePath}
+      alt="Canadian Trading Logo"
+      className={`${s.icon} transition-all duration-500 group-hover:scale-105 flex-shrink-0 object-contain rounded-full`}
+      onError={(e) => {
+        // Fallback in case image doesn't load
+        console.error('Logo image failed to load:', imagePath);
+        e.currentTarget.style.display = 'none';
+      }}
+    />
+  );
+
+  /* -------------------------------------------------------------------------- */
+  /*                               MODERN TEXT BLOCK                           */
+  /* -------------------------------------------------------------------------- */
+
+  const LogoText = () => (
+    <div className="flex flex-col leading-tight min-w-0">
+      <h1
+        className={`${s.title} font-black tracking-tight whitespace-nowrap relative`}
+      >
+        <span 
+          className="relative inline-block"
+          style={{ color: BRAND.yellow }}
         >
-          {/* Outer Circle - Global Trade */}
-          <circle 
-            cx="50" 
-            cy="50" 
-            r="45" 
-            className="fill-primary/5 stroke-primary" 
-            strokeWidth="2.5" 
-            strokeDasharray="6 6"
+          Canadian
+          <span 
+            className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-yellow-400 to-transparent"
+            style={{ opacity: 0.3 }}
           />
-          
-          {/* Inner Circle - Connectivity */}
-          <circle 
-            cx="50" 
-            cy="50" 
-            r="35" 
-            className="fill-primary/10 stroke-primary/50" 
-            strokeWidth="1.5"
+        </span>{" "}
+        <span 
+          className="relative inline-block"
+          style={{ color: BRAND.gray }}
+        >
+          Trading
+          <span 
+            className="absolute -inset-1 bg-yellow-400 rounded-lg opacity-10 blur-sm"
           />
+        </span>
+      </h1>
 
-          {/* Stylized Maple Leaf - Canada */}
-          <g className="origin-center group-hover:rotate-3 transition-transform duration-300">
-            <path
-              d="M50 20L58 40L78 40L62 52L70 72L50 60L30 72L38 52L22 40L42 40L50 20Z"
-              className="fill-primary"
-            />
-            {/* Leaf Stem */}
-            <rect x="48" y="60" width="4" height="15" className="fill-amber-700" rx="2" />
-          </g>
-
-          {/* Import/Export Arrows */}
-          <g className="origin-center group-hover:scale-105 transition-transform duration-300">
-            {/* Import Arrow (Incoming) */}
-            <path
-              d="M20 85L30 75L26 71L20 77L20 85Z"
-              className="fill-amber-400"
-            />
-            <path
-              d="M20 75L35 75"
-              stroke="white"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            
-            {/* Export Arrow (Outgoing) */}
-            <path
-              d="M80 25L70 35L74 39L80 33L80 25Z"
-              className="fill-amber-400"
-            />
-            <path
-              d="M80 35L65 35"
-              stroke="white"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </g>
-
-          {/* Globe Grid Lines */}
-          <g stroke="white" strokeWidth="1.5" strokeOpacity="0.2">
-            <circle cx="50" cy="50" r="25" fill="none" />
-            <path d="M50 25L50 75" />
-            <path d="M25 50L75 50" />
-            <path d="M32 32L68 68" />
-            <path d="M32 68L68 32" />
-          </g>
-
-          {/* Accent Elements - Trade Routes */}
-          <path
-            d="M20 20L35 35M80 80L65 65M20 80L35 65M80 20L65 35"
-            stroke="white"
-            strokeWidth="2"
-            strokeOpacity="0.15"
-            strokeDasharray="4 4"
-          />
-
-          {/* Central Gold Accent */}
-          <circle cx="50" cy="50" r="8" className="fill-amber-400" />
-          <circle cx="50" cy="50" r="4" className="fill-white" />
-        </svg>
-      </div>
-
-      {/* 2. Professional Typography */}
-      <div className="flex flex-col justify-center border-l-2 border-primary/30 pl-3 md:pl-4">
-        <div className="flex flex-col leading-[0.9]">
-          <h1 className={`${s.title} font-black tracking-tight text-foreground flex items-baseline flex-wrap`}>
-            <span className="opacity-90">Canadian</span>
-            <span className="ml-1.5 bg-gradient-to-r from-primary via-amber-500 to-primary bg-clip-text text-transparent">
-              Trade
+      {showTagline && (
+        <>
+          <div className={`flex items-center flex-wrap ${s.taglineSpacing} mt-0.5 sm:mt-1`}>
+            <span
+              className={`${s.sub} font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full`}
+              style={{ 
+                color: BRAND.white,
+                background: `linear-gradient(135deg, ${BRAND.navy} 0%, ${BRAND.navyLight} 100%)`,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            >
+              Import
             </span>
-          </h1>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className={`${s.sub} font-bold uppercase tracking-wider text-muted-foreground/70`}>
-              IMPORT
+
+            <span
+              className={s.dot}
+              style={{ color: BRAND.yellow }}
+            >
+              ●
             </span>
-            <span className="text-amber-400 text-xs">●</span>
-            <span className={`${s.sub} font-bold uppercase tracking-wider text-muted-foreground/70`}>
-              EXPORT
+
+            <span
+              className={`${s.sub} font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full`}
+              style={{ 
+                color: BRAND.white,
+                background: `linear-gradient(135deg, ${BRAND.navy} 0%, ${BRAND.navyLight} 100%)`,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            >
+              Export
             </span>
           </div>
-          <p className={`text-[8px] md:text-[10px] font-medium uppercase tracking-[0.35em] text-primary/60 mt-1`}>
-            Global Logistics
+
+          <p
+            className={`${s.globalText} uppercase tracking-[0.2em] sm:tracking-[0.3em] mt-0.5 sm:mt-1 font-semibold relative`}
+            style={{ color: BRAND.gray }}
+          >
+            <span className="relative z-10">Global Trade Solutions</span>
+            <span 
+              className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-yellow-400 to-transparent"
+              style={{ opacity: 0.3 }}
+            />
           </p>
-        </div>
+        </>
+      )}
+    </div>
+  );
+
+  /* -------------------------------------------------------------------------- */
+  /*                               ICON ONLY VARIANT                           */
+  /* -------------------------------------------------------------------------- */
+
+  const IconOnly = () => (
+    <div className="group select-none transition-all duration-300">
+      <LogoImage />
+    </div>
+  );
+
+  /* -------------------------------------------------------------------------- */
+  /*                               TEXT ONLY VARIANT                           */
+  /* -------------------------------------------------------------------------- */
+
+  const TextOnly = () => (
+    <div className="group select-none transition-all duration-300">
+      <LogoText />
+    </div>
+  );
+
+  /* -------------------------------------------------------------------------- */
+  /*                              FULL VARIANT                                 */
+  /* -------------------------------------------------------------------------- */
+
+  const FullLogo = () => (
+    <div
+      className="
+        flex 
+        flex-row
+        items-center 
+        gap-2 sm:gap-4
+        group 
+        select-none 
+        transition-all duration-300
+        hover:scale-105
+      "
+    >
+      <LogoImage />
+
+      <div className="pl-2 sm:pl-4 border-l border-gray-300 relative">
+        <LogoText />
       </div>
     </div>
   );
 
+  /* -------------------------------------------------------------------------- */
+  /*                              RENDER BASED ON VARIANT                      */
+  /* -------------------------------------------------------------------------- */
+
+  const getContent = () => {
+    switch(variant) {
+      case "icon":
+        return <IconOnly />;
+      case "text":
+        return <TextOnly />;
+      default:
+        return <FullLogo />;
+    }
+  };
+
+  const content = getContent();
+
   return linkTo ? (
-    <Link to={linkTo} className="inline-block no-underline active:scale-95 transition-transform">
+    <Link
+      to={linkTo}
+      className="inline-flex items-center active:scale-95 transition-transform duration-200"
+    >
       {content}
     </Link>
   ) : (
