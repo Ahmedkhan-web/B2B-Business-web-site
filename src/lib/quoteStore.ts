@@ -18,11 +18,12 @@ export interface QuoteItem {
 
 interface QuoteStore {
   items: QuoteItem[];
-  addItem: (item: Omit<QuoteItem, 'quantity' | 'notes' | 'fclUnits'>) => boolean;
+  addItem: (item: Omit<QuoteItem, 'quantity' | 'notes' | 'fclUnits' | 'packaging'>) => boolean;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   updateNotes: (id: string, notes: string) => void;
   updateFCLUnits: (id: string, fclUnits: number) => void;
+  updatePackaging: (id: string, packaging: string) => void; // New function
   clearItems: () => void;
 }
 
@@ -45,7 +46,7 @@ export const useQuoteStore = create<QuoteStore>((set, get) => ({
           hsCode: 'PRE-ASSIGNED',
           netWeight: '28.5 MT',
           unitType: '20ft FCL',
-          packaging: 'PP BAGS',
+          packaging: 'PP_BAGS', // Changed from 'PP BAGS' to match dropdown value
         },
       ],
     }));
@@ -70,6 +71,12 @@ export const useQuoteStore = create<QuoteStore>((set, get) => ({
   updateFCLUnits: (id, fclUnits) =>
     set((state) => ({
       items: state.items.map((i) => (i.id === id ? { ...i, fclUnits } : i)),
+    })),
+
+  // New function to update packaging
+  updatePackaging: (id, packaging) =>
+    set((state) => ({
+      items: state.items.map((i) => (i.id === id ? { ...i, packaging } : i)),
     })),
 
   clearItems: () => set({ items: [] }),

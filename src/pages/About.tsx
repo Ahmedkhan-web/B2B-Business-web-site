@@ -21,6 +21,9 @@ const values = [
 ];
 
 const About = () => {
+  // Video ID for the new YouTube video
+  const videoId = "T7ysfqLxD90"; // Updated to the new video
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -40,13 +43,13 @@ const About = () => {
             </div>
           </ScrollReveal>
 
-          {/* ✅ Video Section - Fixed YouTube Embed */}
+          {/* Video Section - YouTube Embed */}
           <ScrollReveal delay={100}>
             <div className="mb-16 max-w-4xl mx-auto">
               <div className="relative rounded-xl overflow-hidden shadow-lg" style={{ paddingTop: "56.25%" }}>
                 <iframe
                   className="absolute top-0 left-0 w-full h-full"
-                  src="https://www.youtube.com/embed/3FdY6vrK4y8?autoplay=0&rel=0"
+                  src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`}
                   title="Canadian EST Trading Company Video"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
