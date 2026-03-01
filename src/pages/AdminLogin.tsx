@@ -17,7 +17,7 @@ const AdminLogin = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // Mock admin login - in production this would validate against backend
-    if (email === "admindf@gmail.com" && password === "admin123") {
+    if (email === "aaa@gmail.com" && password === "123") {
       login({
         id: 'admin-1',
         name: 'Admin',
