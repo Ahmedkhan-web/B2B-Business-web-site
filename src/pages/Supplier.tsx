@@ -21,9 +21,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { countries } from "@/lib/countryData";
 import { validateEmail, validatePhone, getPhoneRule } from "@/lib/validationUtils";
 import { useAdminStore } from "@/lib/adminStore";
+import { useAuthStore } from "@/lib/authStore";
 import { Link } from "react-router-dom";
 
-// Define types for product
 interface Product {
   id: string;
   name: string;
@@ -46,7 +46,6 @@ interface Product {
   createdAt: string;
 }
 
-// Define props type for MessageCenter
 interface MessageCenterProps {
   messagesList: Array<{
     id: number;
@@ -62,7 +61,6 @@ interface MessageCenterProps {
   }>>>;
 }
 
-// Define props type for ProfileSettings
 interface ProfileSettingsProps {
   companyName: string;
   businessType: string;
@@ -109,13 +107,11 @@ interface ProfileSettingsProps {
   onLogout: () => void;
 }
 
-// Define props type for ProductsManager
 interface ProductsManagerProps {
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
 }
 
-// Success Popup Component
 const SuccessPopup = ({ message, onClose }: { message: string; onClose: () => void }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -134,12 +130,10 @@ const SuccessPopup = ({ message, onClose }: { message: string; onClose: () => vo
   );
 };
 
-// Message Center Component
 const MessageCenter = ({ messagesList, setMessagesList }: MessageCenterProps) => {
   const [newMessage, setNewMessage] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messagesList]);
@@ -209,7 +203,6 @@ const MessageCenter = ({ messagesList, setMessagesList }: MessageCenterProps) =>
   );
 };
 
-// Product Management Component
 const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -219,7 +212,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
   
-  // New product form state
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
     name: '',
     category: '',
@@ -240,7 +232,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
     status: 'draft'
   });
 
-  // Product categories (expanded)
   const productCategories = [
     "Grains & Pulses",
     "Edible Oils", 
@@ -355,7 +346,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
     setNewProduct({...newProduct, images: newImages});
   };
 
-  // Filter products
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -367,7 +357,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
@@ -393,7 +382,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="glass-card p-3 sm:p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="relative">
@@ -433,7 +421,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
         </div>
       </div>
 
-      {/* Add/Edit Product Modal */}
       {(showAddProduct || editingProduct) && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto" onClick={() => {
           setShowAddProduct(false);
@@ -455,7 +442,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
             
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                {/* Basic Information */}
                 <div className="space-y-3 sm:space-y-4">
                   <h4 className="font-bold text-primary text-sm sm:text-base">Basic Information</h4>
                   
@@ -526,7 +512,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
                   </div>
                 </div>
 
-                {/* Pricing & Quantity */}
                 <div className="space-y-3 sm:space-y-4">
                   <h4 className="font-bold text-primary text-sm sm:text-base">Pricing & Quantity</h4>
                   
@@ -648,7 +633,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
                 </div>
               </div>
 
-              {/* Description & Specifications */}
               <div className="space-y-3 sm:space-y-4">
                 <h4 className="font-bold text-primary text-sm sm:text-base">Description & Specifications</h4>
                 
@@ -694,7 +678,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
                 </div>
               </div>
 
-              {/* Images */}
               <div className="space-y-3 sm:space-y-4">
                 <h4 className="font-bold text-primary text-sm sm:text-base">Product Images</h4>
                 
@@ -740,7 +723,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
                 )}
               </div>
 
-              {/* Action Buttons */}
               <div className="flex gap-2 sm:gap-3 pt-4">
                 <Button
                   className="btn-gradient-gold flex-1 text-xs sm:text-sm h-8 sm:h-10"
@@ -764,7 +746,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
         </div>
       )}
 
-      {/* Products Grid/List */}
       {filteredProducts.length === 0 ? (
         <div className="glass-card p-8 sm:p-12 text-center">
           <Package2 className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground/20 mx-auto mb-4" />
@@ -954,7 +935,6 @@ const ProductsManager = ({ products, setProducts }: ProductsManagerProps) => {
   );
 };
 
-// Profile Settings Component
 const ProfileSettings = ({ 
   companyName, 
   businessType, 
@@ -1208,7 +1188,6 @@ const ProfileSettings = ({
   );
 };
 
-// Export Markets Options
 const exportMarketOptions = [
   "North America (USA, Canada, Mexico)",
   "South America (Brazil, Argentina, Chile, etc.)",
@@ -1227,7 +1206,6 @@ const exportMarketOptions = [
   "Global - All Markets"
 ];
 
-// Payment terms (updated - removed Western Union)
 const paymentTerms = [
   "Letter of Credit (L/C)",
   "Telegraphic Transfer (T/T)",
@@ -1247,28 +1225,28 @@ const Supplier = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [showVerification, setShowVerification] = useState(false);
   
-  // Company Information
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setUsername] = useState("");
+  
   const [companyName, setCompanyName] = useState("");
   const [businessType, setBusinessType] = useState("");
   const [yearEstablished, setYearEstablished] = useState("");
   const [employeeCount, setEmployeeCount] = useState("");
   const [currentRevenue, setCurrentRevenue] = useState("");
   
-  // Location Information
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedPort, setSelectedPort] = useState("");
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [warehouseLocation, setWarehouseLocation] = useState("");
   
-  // Contact Information
   const [name, setName] = useState("");
   const [designation, setDesignation] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
   
-  // Business Details
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [exportMarkets, setExportMarkets] = useState<string[]>([]);
   const [capacity, setCapacity] = useState("");
@@ -1277,36 +1255,29 @@ const Supplier = () => {
   const [minOrderQuantity, setMinOrderQuantity] = useState("");
   const [leadTime, setLeadTime] = useState("");
   
-  // Trade Information
   const [preferredPaymentTerms, setPreferredPaymentTerms] = useState<string[]>([]);
   
-  // Banking Information (Optional - for security)
   const [bankName, setBankName] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [swiftCode, setSwiftCode] = useState("");
   const [showBanking, setShowBanking] = useState(false);
   
-  // Documents
   const [certificateFiles, setCertificateFiles] = useState<File[]>([]);
   
-  // Products
   const [products, setProducts] = useState<Product[]>([]);
   
-  // Validation States
   const [emailError, setEmailError] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   
-  // Step Validation States
   const [step1Errors, setStep1Errors] = useState<{[key: string]: string}>({});
   const [step2Errors, setStep2Errors] = useState<{[key: string]: string}>({});
   const [step3Errors, setStep3Errors] = useState<{[key: string]: string}>({});
   
-  // Messages State
   const [messagesList, setMessagesList] = useState([
     { id: 1, text: "Welcome to the Supplier Portal. Our team will assist you with your inquiries.", sender: "support", time: "09:00 AM" }
   ]);
   
-  // Profile email verification
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [emailVerificationCode, setEmailVerificationCode] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
@@ -1314,11 +1285,12 @@ const Supplier = () => {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [verifiedEmail, setVerifiedEmail] = useState("");
 
-  // Success Popup
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const addSupplier = useAdminStore((s) => s.addSupplier);
+  const register = useAuthStore((s) => s.register);
+  const login = useAuthStore((s) => s.login);
   
   const countryInfo = countries.find((c) => c.name === selectedCountry);
   const phoneCode = countryInfo?.phoneCode || "";
@@ -1326,7 +1298,6 @@ const Supplier = () => {
   const phoneLengths = countryInfo?.phoneLength || [];
   const availablePorts = countryInfo?.ports || [];
 
-  // Profile State - Initialize with form data
   const [profileData, setProfileData] = useState({
     companyName: "",
     businessType: "",
@@ -1337,7 +1308,6 @@ const Supplier = () => {
     currentRevenue: ""
   });
 
-  // Update profile data when form data changes
   useEffect(() => {
     setProfileData({
       companyName,
@@ -1350,7 +1320,6 @@ const Supplier = () => {
     });
   }, [companyName, businessType, name, email, phone, city, currentRevenue]);
 
-  // Set verified email on registration
   useEffect(() => {
     if (submitted) {
       setVerifiedEmail(email);
@@ -1379,7 +1348,6 @@ const Supplier = () => {
   const handleSendVerification = () => {
     if (!emailError && email) {
       setShowVerification(true);
-      // In real app, send verification email here
     }
   };
 
@@ -1403,7 +1371,6 @@ const Supplier = () => {
     setCertificateFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Validate Step 1
   const validateStep1 = (): boolean => {
     const errors: {[key: string]: string} = {};
     
@@ -1412,18 +1379,22 @@ const Supplier = () => {
     if (!selectedCountry) errors.country = "Country is required";
     if (!city.trim()) errors.city = "City is required";
     if (!name.trim()) errors.name = "Contact person name is required";
+    if (!username.trim()) errors.username = "Username is required";
+    else if (username.length < 3) errors.username = "Username must be at least 3 characters";
     if (!email.trim()) errors.email = "Email is required";
     else if (!validateEmail(email).valid) errors.email = validateEmail(email).message;
     if (!phone.trim()) errors.phone = "Phone number is required";
     else if (phoneLengths.length > 0 && !phoneLengths.includes(phone.length)) {
       errors.phone = `Phone number must be ${phoneLengths.join(' or ')} digits`;
     }
+    if (!password) errors.password = "Password is required";
+    else if (password.length < 8) errors.password = "Password must be at least 8 characters";
+    else if (password !== confirmPassword) errors.password = "Passwords do not match";
     
     setStep1Errors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  // Validate Step 2
   const validateStep2 = (): boolean => {
     const errors: {[key: string]: string} = {};
     
@@ -1434,7 +1405,6 @@ const Supplier = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Validate Step 3
   const validateStep3 = (): boolean => {
     const errors: {[key: string]: string} = {};
     
@@ -1461,50 +1431,72 @@ const Supplier = () => {
       }
     } else if (step === 3) {
       if (validateStep3()) {
-        addSupplier({
-          companyName,
-          businessType,
-          yearEstablished,
-          employeeCount,
-          currentRevenue,
-          country: selectedCountry,
-          port: selectedPort,
-          city,
-          address,
-          warehouseLocation,
+        const registered = register({
           name,
-          designation,
+          username,
           email,
+          company: companyName,
+          country: selectedCountry,
           phone: `${phoneCode} ${phone}`,
-          website,
-          exportProducts: selectedProducts,
-          exportMarkets,
-          capacity: `${capacity} ${capacityUnit}`,
-          productDetails,
-          minOrderQuantity,
-          leadTime,
-          preferredPaymentTerms,
-          bankName: showBanking ? bankName : undefined,
-          bankAccount: showBanking ? bankAccount : undefined,
-          swiftCode: showBanking ? swiftCode : undefined,
-          certificates: certificateFiles.map(f => f.name),
-          products: products,
-          status: 'pending',
-          registrationDate: new Date().toISOString(),
-          emailVerified: true
+          role: 'supplier'
         });
-        
-        setIsSubmitted(true);
-        setSuccessMessage("Registration submitted successfully!");
-        setShowSuccessPopup(true);
-        setTimeout(() => setShowSuccessPopup(false), 3000);
+
+        if (registered) {
+          login(email, password);
+          
+          setTimeout(() => {
+            const { user } = useAuthStore.getState();
+            
+            if (user) {
+              const supplierData = {
+                name,
+                email,
+                company: companyName,
+                website,
+                country: selectedCountry,
+                phone: `${phoneCode} ${phone}`,
+                port: selectedPort,
+                exportProducts: selectedProducts,
+                capacity: `${capacity} ${capacityUnit}`,
+                productDetails,
+                businessType,
+                yearEstablished,
+                employeeCount,
+                currentRevenue,
+                city,
+                address,
+                warehouseLocation,
+                designation,
+                exportMarkets,
+                minOrderQuantity,
+                leadTime,
+                preferredPaymentTerms,
+                bankName: showBanking ? bankName : undefined,
+                bankAccount: showBanking ? bankAccount : undefined,
+                swiftCode: showBanking ? swiftCode : undefined,
+                certificates: certificateFiles.map(f => f.name),
+                products: products,
+                registrationDate: new Date().toISOString(),
+                emailVerified: true,
+                username
+              };
+              
+              addSupplier(user.id, supplierData);
+              
+              setIsSubmitted(true);
+              setSuccessMessage("Registration submitted successfully!");
+              setShowSuccessPopup(true);
+              setTimeout(() => setShowSuccessPopup(false), 3000);
+            }
+          }, 100);
+        } else {
+          alert("Registration failed. Email may already be in use or username is taken.");
+        }
       }
     }
   };
 
-  // Profile Handlers
   const handleSaveProfile = () => {
-    // Validate phone number
     if (phoneLengths.length > 0 && !phoneLengths.includes(profileData.phone.length)) {
       alert(`Phone number must be ${phoneLengths.join(' or ')} digits`);
       return;
@@ -1551,11 +1543,9 @@ const Supplier = () => {
     window.location.href = '/';
   };
 
-  // Dashboard Component
   const Dashboard = useMemo(() => {
     const Component = () => (
       <div className="space-y-4 sm:space-y-6">
-        {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="glass-card p-3 sm:p-4 lg:p-6 border-l-4 border-primary">
             <p className="text-[8px] sm:text-[10px] lg:text-xs uppercase font-bold text-muted-foreground">Status</p>
@@ -1596,7 +1586,6 @@ const Supplier = () => {
           </div>
         </div>
 
-        {/* Recent Products */}
         <div className="glass-card p-4 sm:p-5 lg:p-6 gradient-border">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-sm sm:text-base lg:text-lg font-bold flex items-center gap-2">
@@ -1650,7 +1639,6 @@ const Supplier = () => {
         <Navbar />
         <div className="pt-20 sm:pt-24 pb-16 sm:pb-20 container mx-auto px-4">
           <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
-            {/* Sidebar */}
             <aside className="w-full lg:w-64 space-y-1 sm:space-y-2">
               <div className="p-3 sm:p-4 mb-4 sm:mb-6 glass-card text-center bg-primary/5">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-tr from-primary to-secondary rounded-full mx-auto mb-2 sm:mb-3 flex items-center justify-center text-white text-base sm:text-lg lg:text-xl font-bold">
@@ -1697,7 +1685,6 @@ const Supplier = () => {
               </Button>
             </aside>
 
-            {/* Main Content */}
             <main className="flex-1 min-w-0">
               {view === "dashboard" && <Dashboard />}
               {view === "messages" && (
@@ -1742,7 +1729,6 @@ const Supplier = () => {
         </div>
         <Footer />
         
-        {/* Success Popup */}
         {showSuccessPopup && (
           <SuccessPopup 
             message={successMessage} 
@@ -1753,7 +1739,6 @@ const Supplier = () => {
     );
   }
 
-  // Expanded product categories for registration
   const productCategories = [
     "Grains & Pulses",
     "Edible Oils", 
@@ -1777,7 +1762,6 @@ const Supplier = () => {
     "Packaging Materials"
   ];
 
-  // Business types
   const businessTypes = [
     "Manufacturer",
     "Exporter",
@@ -1808,7 +1792,6 @@ const Supplier = () => {
             </div>
           </ScrollReveal>
 
-          {/* Progress Steps */}
           <div className="flex items-center justify-center gap-1 sm:gap-2 mb-6 sm:mb-8 px-4">
             {[1, 2, 3].map((s) => (
               <div key={s} className="flex items-center gap-1 sm:gap-2">
@@ -1827,7 +1810,6 @@ const Supplier = () => {
           <ScrollReveal delay={100}>
             <div className="glass-card p-4 sm:p-6 md:p-8 gradient-border">
               <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-                {/* Step 1: Basic Information */}
                 {step === 1 && (
                   <div className="space-y-5 sm:space-y-6">
                     <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-white/10">
@@ -2002,6 +1984,17 @@ const Supplier = () => {
                       </div>
 
                       <div className="space-y-1 sm:space-y-2">
+                        <label className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase">Username *</label>
+                        <Input 
+                          placeholder="johndoe" 
+                          value={username} 
+                          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))} 
+                          className={`bg-white/5 border-white/10 h-8 sm:h-10 text-xs sm:text-sm ${step1Errors.username ? 'border-destructive' : ''}`} 
+                          required 
+                        />
+                      </div>
+
+                      <div className="space-y-1 sm:space-y-2">
                         <label className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase">Designation</label>
                         <Input 
                           placeholder="e.g., Export Manager" 
@@ -2072,9 +2065,37 @@ const Supplier = () => {
                           className="bg-white/5 border-white/10 h-8 sm:h-10 text-xs sm:text-sm" 
                         />
                       </div>
+
+                      <div className="space-y-1 sm:space-y-2">
+                        <label className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase flex items-center gap-1">
+                          Password *
+                          {step1Errors.password && <span className="text-destructive text-[8px] sm:text-[10px]">({step1Errors.password})</span>}
+                        </label>
+                        <Input 
+                          type="password" 
+                          placeholder="********" 
+                          value={password} 
+                          onChange={(e) => setPassword(e.target.value)} 
+                          className={`bg-white/5 border-white/10 h-8 sm:h-10 text-xs sm:text-sm ${step1Errors.password ? 'border-destructive' : ''}`} 
+                          required 
+                        />
+                      </div>
+
+                      <div className="space-y-1 sm:space-y-2">
+                        <label className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase flex items-center gap-1">
+                          Confirm Password *
+                        </label>
+                        <Input 
+                          type="password" 
+                          placeholder="********" 
+                          value={confirmPassword} 
+                          onChange={(e) => setConfirmPassword(e.target.value)} 
+                          className="bg-white/5 border-white/10 h-8 sm:h-10 text-xs sm:text-sm" 
+                          required 
+                        />
+                      </div>
                     </div>
 
-                    {/* Email Verification */}
                     {showVerification && !emailVerified && (
                       <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-primary/5 rounded-xl border border-primary/20">
                         <h4 className="font-bold text-sm sm:text-base mb-2 sm:mb-4">Verify Your Email</h4>
@@ -2103,7 +2124,6 @@ const Supplier = () => {
                   </div>
                 )}
 
-                {/* Step 2: Products & Capabilities */}
                 {step === 2 && (
                   <div className="space-y-5 sm:space-y-6">
                     <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-white/10">
@@ -2249,7 +2269,6 @@ const Supplier = () => {
                   </div>
                 )}
 
-                {/* Step 3: Trade Information */}
                 {step === 3 && (
                   <div className="space-y-5 sm:space-y-6">
                     <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-white/10">
@@ -2276,7 +2295,6 @@ const Supplier = () => {
                       </div>
                     </div>
 
-                    {/* Optional Banking Information Toggle */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
                       <Button
                         type="button"
@@ -2317,7 +2335,6 @@ const Supplier = () => {
                   </div>
                 )}
 
-                {/* Navigation Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
                   {step > 1 && (
                     <Button 

@@ -14,6 +14,7 @@ import { useState, useEffect, useRef } from "react";
 import { countries, CountryInfo } from "@/lib/countryData"; 
 import { validatePhone } from "@/lib/validationUtils";
 import { useAdminStore } from "@/lib/adminStore";
+import { useAuthStore } from "@/lib/authStore";
 import { useQuoteStore } from "@/lib/quoteStore";
 import { Link } from "react-router-dom";
 
@@ -356,7 +357,6 @@ const ProfileSettings = ({
                       value={profileData.email} 
                       onChange={(e) => {
                         setProfileData({...profileData, email: e.target.value});
-                        // Don't show verification immediately, just mark as changed
                       }} 
                       className={`bg-white/5 border-white/10 w-full ${isCurrentEmailVerified ? 'pr-10' : ''}`} 
                     />
@@ -503,6 +503,8 @@ const Register = () => {
 
   // Stores
   const addBuyer = useAdminStore((s) => s.addBuyer);
+  const register = useAuthStore((s) => s.register);
+  const login = useAuthStore((s) => s.login);
   const { items: cartItems, clearItems } = useQuoteStore();
 
   // Registration State - Expanded with more fields
@@ -559,7 +561,7 @@ const Register = () => {
       setVerifiedEmail(email); // Set initial verified email
       setIsEmailVerified(true);
     }
-  }, [isRegistered]);
+  }, [isRegistered, name, company, email, phone]);
 
   const countryInfo = countries.find((c) => c.name === selectedCountry);
   const phoneCode = countryInfo?.phoneCode || "";
@@ -593,6 +595,10 @@ const Register = () => {
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all required fields
+    if (!username) { setPasswordError("Username is required"); return; }
+    if (username.length < 3) { setPasswordError("Username must be at least 3 characters"); return; }
     if (password.length < 8) { setPasswordError("Password must be at least 8 characters long"); return; }
     if (password !== confirmPassword) { setPasswordError("Passwords do not match"); return; }
     
@@ -617,31 +623,67 @@ const Register = () => {
 
   const handleSubmitRegistration = (e: React.FormEvent) => {
     e.preventDefault();
-    const detailedManifest = cartItems.map(item => 
-      `${item.name} | ${item.fclUnits}x ${item.unitType} | Grade: ${item.grade}`
-    ).join("; ");
-
-    // Create buyer object with proper typing
-    const buyerData = {
-      name, 
-      email, 
-      company, 
-      country: selectedCountry,
-      phone: `${phoneCode} ${phone}`, 
-      port: selectedPort,
-      city, 
-      annualVolume: currentVolume,
-      productsOfInterest: detailedManifest,
-      businessType: businessType,
-      yearsInBusiness,
-      taxId,
-      website,
-      reference,
-      newsletter
-    };
     
-    addBuyer(buyerData);
-    setIsRegistered(true);
+    console.log("Starting registration...");
+    
+    // First register in auth store - include username
+    const registered = register({
+      name,
+      username,
+      email,
+      company,
+      country: selectedCountry,
+      phone: `${phoneCode} ${phone}`,
+      role: 'buyer'
+    });
+
+    console.log("Registration result:", registered);
+
+    if (registered) {
+      // Auto login after registration
+      const loggedIn = login(email, password);
+      console.log("Login result:", loggedIn);
+      
+      // Get the current user after login
+      setTimeout(() => {
+        const { user } = useAuthStore.getState();
+        console.log("Current user after login:", user);
+        
+        if (user) {
+          // Create buyer object with proper typing
+          const buyerData = {
+            name, 
+            email, 
+            company, 
+            country: selectedCountry,
+            phone: `${phoneCode} ${phone}`, 
+            port: selectedPort,
+            city, 
+            annualVolume: currentVolume,
+            productsOfInterest: cartItems.map(item => item.name).join(", "),
+            businessType,
+            yearsInBusiness,
+            taxId,
+            website,
+            reference,
+            newsletter,
+            username
+          };
+          
+          // Add buyer with userId
+          addBuyer(user.id, buyerData);
+          console.log("Buyer added successfully");
+          
+          setIsRegistered(true);
+        } else {
+          console.error("User not found after login");
+          alert("Registration completed but there was an issue logging in. Please try logging in manually.");
+          setIsRegistered(true);
+        }
+      }, 100);
+    } else {
+      alert("Registration failed. Email may already be in use or username is taken.");
+    }
   };
 
   const handleFinalSubmit = (e: React.FormEvent) => {
@@ -996,7 +1038,13 @@ const Register = () => {
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Username *</label>
-                        <Input placeholder="johndoe88" value={username} onChange={(e) => setUsername(e.target.value.toLocaleLowerCase())} className="bg-muted/50 h-11" required />
+                        <Input 
+                          placeholder="johndoe88" 
+                          value={username} 
+                          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))} 
+                          className="bg-muted/50 h-11" 
+                          required 
+                        />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Email *</label>
@@ -1048,7 +1096,7 @@ const Register = () => {
                   </div>
 
                   <div className="border-t border-white/10 pt-6">
-                    <h3 className="text-sm font-bold text-primary flex items-center gap-2 mb-4"><Globe className="w-4 h-4" /> Location & Contact</h3>
+                    <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Globe className="w-4 h-4" /> Location & Contact</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Business Country *</label>
@@ -1086,7 +1134,7 @@ const Register = () => {
                   </div>
 
                   <div className="border-t border-white/10 pt-6">
-                    <h3 className="text-sm font-bold text-primary flex items-center gap-2 mb-4"><FileText className="w-4 h-4" /> Additional Information</h3>
+                    <h3 className="text-sm font-bold text-primary flex items-center gap-2"><FileText className="w-4 h-4" /> Additional Information</h3>
                     <div className="space-y-4">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">How did you hear about us? (Optional)</label>
@@ -1175,7 +1223,7 @@ const Register = () => {
                   
                   <div className="flex gap-3 pt-4">
                     <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1">Back</Button>
-                    <Button type="submit" className="flex-[2] btn-gradient-teal font-bold h-12" disabled={!importCountry || (regAvailablePorts.length > 0 && !selectedPort)}>
+                    <Button type="submit" className="flex-[2] btn-gradient-teal font-bold h-12">
                       Complete Registration
                     </Button>
                   </div>

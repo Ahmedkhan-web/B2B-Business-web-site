@@ -16,18 +16,18 @@ const AdminLogin = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock admin login - in production this would validate against backend
-    if (email === "aaa@gmail.com" && password === "123") {
-      login({
-        id: 'admin-1',
-        name: 'Admin',
-        email: 'admindf@gmail.com',
-        country: 'Global',
-        role: 'admin',
-        verified: true,
-      });
-      toast({ title: "Admin Access Granted", description: "Welcome to the admin dashboard." });
-      navigate('/secure-admin');
+    
+    // Use the login method from authStore which handles admin credentials
+    const success = login(email, password);
+    
+    if (success) {
+      const { user } = useAuthStore.getState();
+      if (user?.role === 'admin') {
+        toast({ title: "Admin Access Granted", description: "Welcome to the admin dashboard." });
+        navigate('/secure-admin');
+      } else {
+        toast({ title: "Access Denied", description: "Not an admin account.", variant: "destructive" });
+      }
     } else {
       toast({ title: "Access Denied", description: "Invalid admin credentials.", variant: "destructive" });
     }
@@ -75,6 +75,9 @@ const AdminLogin = () => {
               Access Dashboard
             </Button>
           </form>
+          <div className="mt-4 text-center text-xs text-muted-foreground">
+            <p>Demo credentials: admindf@gmail.com / admin123</p>
+          </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground font-body mt-6">

@@ -2,8 +2,16 @@ import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, Package, FileText, MessageSquare, 
-  Settings, LogOut, Menu, Building2, Eye, EyeOff, Ban, 
-  UserCheck, Trash2, Mail, ChevronRight
+  Settings, LogOut, Building2, Eye, EyeOff, Ban, 
+  UserCheck, Trash2, Mail, ChevronRight, Phone, MapPin,
+  Calendar, Briefcase, DollarSign, Globe, Package2, Scale,
+  Clock, CheckCircle2, XCircle, Download, Printer, FileText as FileTextIcon,
+  User, Award, Hash, Link as LinkIcon, Mail as MailIcon, Phone as PhoneIcon,
+  MapPin as MapPinIcon, Building as BuildingIcon, Globe as GlobeIcon,
+  CreditCard, FileCheck, FolderOpen, Tag, Users as UsersIcon,
+  TrendingUp, TrendingDown, Activity, Search,
+  Filter, Star, StarOff, MoreVertical,
+  ChevronLeft, ChevronRight as ChevronRightIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +30,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuthStore } from "@/lib/authStore";
 import { useAdminStore } from "@/lib/adminStore";
 import { useToast } from "@/hooks/use-toast";
@@ -30,13 +40,55 @@ import { categories, allProducts } from "@/lib/productData";
 // Import types from your store
 import type { BuyerEntry, SupplierEntry, ContactMessage, QuotationEntry } from "@/lib/adminStore";
 
-const sidebarItems: { icon: React.FC<{ className?: string }>; label: string; id: string }[] = [
+interface SidebarItem {
+  icon: React.FC<{ className?: string }>;
+  label: string;
+  id: string;
+}
+
+// Extended interfaces for additional fields
+interface ExtendedBuyerEntry extends BuyerEntry {
+  businessType?: string;
+  yearsInBusiness?: string;
+  taxId?: string;
+  website?: string;
+  reference?: string;
+  newsletter?: boolean;
+  totalSpent?: number;
+  quotationsCount?: number;
+  averageOrderValue?: number;
+  lastInteraction?: string;
+}
+
+interface ExtendedSupplierEntry extends SupplierEntry {
+  businessType?: string;
+  yearEstablished?: string;
+  employeeCount?: string;
+  currentRevenue?: string;
+  website?: string;
+  exportMarkets?: string[];
+  productDetails?: string;
+  minOrderQuantity?: string;
+  leadTime?: string;
+  certificates?: string[];
+  preferredPaymentTerms?: string[];
+  bankName?: string;
+  bankAccount?: string;
+  swiftCode?: string;
+  totalOrders?: number;
+  totalRevenue?: number;
+  qualityRating?: number;
+  completionRate?: number;
+  verifiedDate?: string;
+}
+
+const sidebarItems: SidebarItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
   { icon: Users, label: "Buyers", id: "buyers" },
   { icon: Building2, label: "Suppliers", id: "suppliers" },
   { icon: Package, label: "Products", id: "products" },
   { icon: FileText, label: "Quotations", id: "quotations" },
-  { icon: MessageSquare, label: "Contact Messages", id: "messages" },
+  { icon: MessageSquare, label: "Messages", id: "messages" },
   { icon: Settings, label: "Settings", id: "settings" },
 ];
 
@@ -52,14 +104,20 @@ const Admin: React.FC = () => {
   const [logoutPassword, setLogoutPassword] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedBuyer, setSelectedBuyer] = useState<BuyerEntry | null>(null);
-  const [selectedSupplier, setSelectedSupplier] = useState<SupplierEntry | null>(null);
+  const [selectedBuyer, setSelectedBuyer] = useState<ExtendedBuyerEntry | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<ExtendedSupplierEntry | null>(null);
   const [showBuyerDetails, setShowBuyerDetails] = useState<boolean>(false);
   const [showSupplierDetails, setShowSupplierDetails] = useState<boolean>(false);
+  const [buyerQuotations, setBuyerQuotations] = useState<QuotationEntry[]>([]);
 
-  // Check if user is admin
-  if (!isLoggedIn || !user || user.role !== 'admin') {
-    return <Navigate to="/admin-login" replace />;
+  // Check if user is admin - redirect to admin login if not logged in
+  if (!isLoggedIn) {
+    return <Navigate to="/-admin-login" replace />;
+  }
+
+  // If logged in but not admin, redirect to home
+  if (isLoggedIn && user && user.role !== 'admin') {
+    return <Navigate to="/" replace />;
   }
 
   const handleLogout = (): void => {
@@ -72,30 +130,149 @@ const Admin: React.FC = () => {
     }
   };
 
-  const unreadMessages: number = store.contactMessages.filter((m: ContactMessage) => !m.read).length;
+  const unreadMessages: number = store.contactMessages?.filter((m: ContactMessage) => !m.read).length || 0;
+
+  // Safely get stats with null checks
+  const buyers = store.buyers || [];
+  const suppliers = store.suppliers || [];
+  const quotations = store.quotations || [];
+  const contactMessages = store.contactMessages || [];
+  const hiddenProducts = store.hiddenProducts || [];
 
   // Stats for dashboard
   const stats = {
-    totalBuyers: store.buyers.length,
-    totalSuppliers: store.suppliers.length,
-    totalProducts: allProducts.length,
-    totalQuotations: store.quotations.length,
-    totalMessages: store.contactMessages.length,
-    blockedBuyers: store.buyers.filter((b: BuyerEntry) => b.blocked).length,
-    blockedSuppliers: store.suppliers.filter((s: SupplierEntry) => s.blocked).length,
-    unreadMessages
+    totalBuyers: buyers.length,
+    totalSuppliers: suppliers.length,
+    totalProducts: allProducts?.length || 0,
+    totalQuotations: quotations.length,
+    totalMessages: contactMessages.length,
+    blockedBuyers: buyers.filter((b: BuyerEntry) => b.blocked).length,
+    blockedSuppliers: suppliers.filter((s: SupplierEntry) => s.blocked).length,
+    unreadMessages,
+    totalRevenue: quotations
+      .filter(q => q.status === 'approved')
+      .reduce((sum, q) => sum + (q.totalAmount || 0), 0)
+  };
+
+  // Safely filter buyers with enhanced data
+  const filteredBuyers = buyers
+    .filter((b: BuyerEntry) => {
+      if (!b) return false;
+      if (statusFilter === 'active') return !b.blocked;
+      if (statusFilter === 'blocked') return b.blocked;
+      return true;
+    })
+    .filter((b: BuyerEntry) => {
+      if (!b) return false;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        (b.name?.toLowerCase() || '').includes(searchLower) ||
+        (b.email?.toLowerCase() || '').includes(searchLower) ||
+        (b.company?.toLowerCase() || '').includes(searchLower) ||
+        (b.country?.toLowerCase() || '').includes(searchLower)
+      );
+    })
+    .map(b => ({
+      ...b,
+      totalSpent: quotations
+        .filter(q => q.userId === b.userId && q.status === 'approved')
+        .reduce((sum, q) => sum + (q.totalAmount || 0), 0),
+      quotationsCount: quotations.filter(q => q.userId === b.userId).length,
+      lastInteraction: b.lastActive || b.date
+    }));
+
+  // Safely filter suppliers with enhanced data
+  const filteredSuppliers = suppliers
+    .filter((s: SupplierEntry) => {
+      if (!s) return false;
+      if (statusFilter === 'active') return !s.blocked;
+      if (statusFilter === 'blocked') return s.blocked;
+      return true;
+    })
+    .filter((s: SupplierEntry) => {
+      if (!s) return false;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        (s.name?.toLowerCase() || '').includes(searchLower) ||
+        (s.email?.toLowerCase() || '').includes(searchLower) ||
+        (s.company?.toLowerCase() || '').includes(searchLower) ||
+        (s.country?.toLowerCase() || '').includes(searchLower)
+      );
+    })
+    .map(s => ({
+      ...s,
+      totalOrders: quotations.filter(q => q.userId === s.userId).length,
+      totalRevenue: quotations
+        .filter(q => q.userId === s.userId && q.status === 'approved')
+        .reduce((sum, q) => sum + (q.totalAmount || 0), 0)
+    }));
+
+  const handleViewBuyer = (buyer: BuyerEntry): void => {
+    const extendedBuyer = {
+      ...buyer,
+      totalSpent: quotations
+        .filter(q => q.userId === buyer.userId && q.status === 'approved')
+        .reduce((sum, q) => sum + (q.totalAmount || 0), 0),
+      quotationsCount: quotations.filter(q => q.userId === buyer.userId).length,
+      averageOrderValue: quotations
+        .filter(q => q.userId === buyer.userId && q.status === 'approved')
+        .reduce((sum, q) => sum + (q.totalAmount || 0), 0) / 
+        (quotations.filter(q => q.userId === buyer.userId && q.status === 'approved').length || 1),
+      lastInteraction: buyer.lastActive || buyer.date
+    };
+    setSelectedBuyer(extendedBuyer as ExtendedBuyerEntry);
+    
+    // Get all quotations for this buyer
+    const buyerQuots = quotations.filter(q => q.userId === buyer.userId);
+    setBuyerQuotations(buyerQuots);
+    setShowBuyerDetails(true);
+  };
+
+  const handleViewSupplier = (supplier: SupplierEntry): void => {
+    const extendedSupplier = {
+      ...supplier,
+      totalOrders: quotations.filter(q => q.userId === supplier.userId).length,
+      totalRevenue: quotations
+        .filter(q => q.userId === supplier.userId && q.status === 'approved')
+        .reduce((sum, q) => sum + (q.totalAmount || 0), 0)
+    };
+    setSelectedSupplier(extendedSupplier as ExtendedSupplierEntry);
+    setShowSupplierDetails(true);
+  };
+
+  const handleDeleteBuyer = (buyer: BuyerEntry): void => {
+    if (window.confirm('Delete this buyer? This will permanently remove their account and they will be able to register again.')) {
+      store.deleteBuyer(buyer.id, buyer.userId);
+      toast({ title: "Buyer deleted permanently" });
+    }
+  };
+
+  const handleDeleteSupplier = (supplier: SupplierEntry): void => {
+    if (window.confirm('Delete this supplier? This will permanently remove their account and they will be able to register again.')) {
+      store.deleteSupplier(supplier.id, supplier.userId);
+      toast({ title: "Supplier deleted permanently" });
+    }
+  };
+
+  const getStatusColor = (status: string): string => {
+    switch(status) {
+      case 'active': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
+      case 'blocked': return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800';
+      case 'pending': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800';
+      default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col fixed h-full z-30`}>
-        <div className="h-16 flex items-center px-4 border-b border-gray-200 dark:border-gray-700">
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 flex flex-col fixed h-full z-30 shadow-sm`}>
+        <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-slate-800">
           <div className={`flex items-center ${sidebarOpen ? 'space-x-2' : 'justify-center w-full'}`}>
-            <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center shadow-md">
               <span className="text-white font-bold text-sm">A</span>
             </div>
-            {sidebarOpen && <span className="font-bold text-sm text-gray-900 dark:text-white">Admin Panel</span>}
+            {sidebarOpen && <span className="font-semibold text-slate-900 dark:text-white">Admin Panel</span>}
           </div>
         </div>
         
@@ -108,16 +285,18 @@ const Admin: React.FC = () => {
                 onClick={() => setActiveTab(item.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1 ${
                   activeTab === item.id 
-                    ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700'
+                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400' 
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'
                 }`}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
+                <Icon className={`w-4 h-4 flex-shrink-0 ${
+                  activeTab === item.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-500'
+                }`} />
                 {sidebarOpen && (
                   <>
                     <span className="flex-1 text-left">{item.label}</span>
                     {item.id === 'messages' && unreadMessages > 0 && (
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center">
+                      <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-medium min-w-[18px] text-center">
                         {unreadMessages}
                       </span>
                     )}
@@ -128,10 +307,10 @@ const Admin: React.FC = () => {
           })}
         </nav>
         
-        <div className="p-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-2 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={() => setShowLogoutDialog(true)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-950/30 transition-colors"
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
             {sidebarOpen && "Sign Out"}
@@ -141,43 +320,43 @@ const Admin: React.FC = () => {
         {/* Sidebar Toggle */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700"
+          className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
         >
-          <ChevronRight className={`w-4 h-4 transition-transform ${!sidebarOpen && 'rotate-180'}`} />
+          <ChevronRightIcon className={`w-4 h-4 text-slate-600 dark:text-slate-400 transition-transform ${!sidebarOpen && 'rotate-180'}`} />
         </button>
       </aside>
 
       {/* Main Content */}
       <main className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300`}>
         {/* Header */}
-        <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white capitalize">
+        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between shadow-sm">
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-white capitalize">
             {activeTab}
           </h1>
           
           <div className="flex items-center gap-4">
             {/* Search Bar */}
             <div className="hidden md:block relative">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
               <Input
                 type="text"
                 placeholder="Search..."
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                className="w-64 pl-9"
+                className="w-64 pl-9 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-500"
               />
-              <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
             </div>
 
             {/* Admin Profile */}
-            <div className="flex items-center gap-3">
-              <Avatar>
-                <AvatarFallback className="bg-red-600 text-white">A</AvatarFallback>
+            <div className="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-800">
+              <Avatar className="h-9 w-9 ring-2 ring-indigo-100 dark:ring-indigo-950">
+                <AvatarFallback className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white font-medium">
+                  A
+                </AvatarFallback>
               </Avatar>
               <div className="hidden md:block">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">Admin</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Administrator</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">Admin</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Administrator</p>
               </div>
             </div>
           </div>
@@ -190,660 +369,1283 @@ const Admin: React.FC = () => {
             <div className="space-y-6">
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Buyers</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.totalBuyers}</p>
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm hover:shadow transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Buyers</p>
+                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalBuyers}</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center">
+                        <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                      </div>
                     </div>
-                    <Users className="w-8 h-8 text-blue-500" />
-                  </div>
-                  {stats.blockedBuyers > 0 && (
-                    <p className="text-xs text-red-600 mt-2">{stats.blockedBuyers} blocked</p>
-                  )}
-                </div>
+                    {stats.blockedBuyers > 0 && (
+                      <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">
+                        <span className="font-medium">{stats.blockedBuyers}</span> blocked
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
 
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Suppliers</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.totalSuppliers}</p>
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm hover:shadow transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Suppliers</p>
+                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalSuppliers}</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                      </div>
                     </div>
-                    <Building2 className="w-8 h-8 text-green-500" />
-                  </div>
-                  {stats.blockedSuppliers > 0 && (
-                    <p className="text-xs text-red-600 mt-2">{stats.blockedSuppliers} blocked</p>
-                  )}
-                </div>
+                    {stats.blockedSuppliers > 0 && (
+                      <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">
+                        <span className="font-medium">{stats.blockedSuppliers}</span> blocked
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
 
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Products</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.totalProducts}</p>
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm hover:shadow transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Products</p>
+                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalProducts}</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center">
+                        <Package className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                      </div>
                     </div>
-                    <Package className="w-8 h-8 text-purple-500" />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">{store.hiddenProducts.length} hidden</p>
-                </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">{hiddenProducts.length}</span> hidden
+                    </p>
+                  </CardContent>
+                </Card>
 
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Messages</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.totalMessages}</p>
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm hover:shadow transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Messages</p>
+                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalMessages}</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
+                        <MessageSquare className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+                      </div>
                     </div>
-                    <MessageSquare className="w-8 h-8 text-amber-500" />
-                  </div>
-                  {stats.unreadMessages > 0 && (
-                    <p className="text-xs text-amber-600 mt-2">{stats.unreadMessages} unread</p>
-                  )}
-                </div>
+                    {stats.unreadMessages > 0 && (
+                      <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">
+                        <span className="font-medium">{stats.unreadMessages}</span> unread
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
 
-              {/* Recent Buyers and Suppliers */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Recent Buyers</h3>
-                  {store.buyers.slice(0, 5).map((buyer: BuyerEntry) => (
-                    <div key={buyer.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{buyer.name}</p>
-                        <p className="text-xs text-gray-500">{buyer.country}</p>
-                      </div>
-                      <Badge variant={buyer.blocked ? "destructive" : "secondary"}>
-                        {buyer.blocked ? 'Blocked' : 'Active'}
-                      </Badge>
+              {/* Recent Activity */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base text-slate-900 dark:text-white flex items-center justify-between">
+                      Recent Buyers
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-950/50"
+                        onClick={() => setActiveTab('buyers')}
+                      >
+                        View all <ChevronRightIcon className="w-4 h-4 ml-1" />
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {buyers.slice(0, 5).map((buyer: BuyerEntry) => (
+                        <div key={buyer?.id || Math.random()} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400 text-xs">
+                                {buyer?.name?.charAt(0).toUpperCase() || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">{buyer?.name || 'Unknown'}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{buyer?.country || 'N/A'} • {buyer?.company || 'No company'}</p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className={getStatusColor(buyer?.blocked ? 'blocked' : 'active')}>
+                            {buyer?.blocked ? 'Blocked' : 'Active'}
+                          </Badge>
+                        </div>
+                      ))}
+                      {buyers.length === 0 && (
+                        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No buyers yet</p>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  </CardContent>
+                </Card>
 
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Recent Suppliers</h3>
-                  {store.suppliers.slice(0, 5).map((supplier: SupplierEntry) => (
-                    <div key={supplier.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{supplier.name}</p>
-                        <p className="text-xs text-gray-500">{supplier.country}</p>
-                      </div>
-                      <Badge variant={supplier.blocked ? "destructive" : "secondary"}>
-                        {supplier.blocked ? 'Blocked' : 'Active'}
-                      </Badge>
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base text-slate-900 dark:text-white flex items-center justify-between">
+                      Recent Suppliers
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-950/50"
+                        onClick={() => setActiveTab('suppliers')}
+                      >
+                        View all <ChevronRightIcon className="w-4 h-4 ml-1" />
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {suppliers.slice(0, 5).map((supplier: SupplierEntry) => (
+                        <div key={supplier?.id || Math.random()} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 text-xs">
+                                {supplier?.name?.charAt(0).toUpperCase() || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">{supplier?.company || 'Unknown'}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{supplier?.country || 'N/A'} • {supplier?.name}</p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className={getStatusColor(supplier?.blocked ? 'blocked' : 'active')}>
+                            {supplier?.blocked ? 'Blocked' : 'Active'}
+                          </Badge>
+                        </div>
+                      ))}
+                      {suppliers.length === 0 && (
+                        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No suppliers yet</p>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  </CardContent>
+                </Card>
               </div>
+
+              {/* Revenue Card */}
+              <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/20 dark:to-slate-900">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-indigo-600 dark:text-indigo-400 font-medium mb-1">Total Revenue</p>
+                      <p className="text-3xl font-bold text-slate-900 dark:text-white">${stats.totalRevenue.toLocaleString()}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">From approved quotations</p>
+                    </div>
+                    <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center">
+                      <DollarSign className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
           {/* Buyers */}
           {activeTab === "buyers" && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Buyer Management ({store.buyers.length})</h3>
-                
-                <div className="flex items-center gap-2">
-                  <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value)}>
-                    <SelectTrigger className="w-[130px]">
-                      <SelectValue placeholder="Filter" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="blocked">Blocked</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+              <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-xl text-slate-900 dark:text-white">Buyer Management</CardTitle>
+                    <CardDescription className="text-slate-500 dark:text-slate-400">
+                      Manage and monitor all buyer accounts
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[140px] bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800">
+                        <Filter className="w-4 h-4 mr-2 text-slate-500" />
+                        <SelectValue placeholder="Filter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Buyers</SelectItem>
+                        <SelectItem value="active">Active Only</SelectItem>
+                        <SelectItem value="blocked">Blocked Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-
-              {store.buyers.length === 0 ? (
-                <p className="p-6 text-center text-gray-500">No buyer registrations yet.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-900">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">Name</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">Email</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400 hidden md:table-cell">Country</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400 hidden lg:table-cell">Date</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">Status</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {store.buyers
-                        .filter((b: BuyerEntry) => {
-                          if (statusFilter === 'active') return !b.blocked;
-                          if (statusFilter === 'blocked') return b.blocked;
-                          return true;
-                        })
-                        .filter((b: BuyerEntry) => 
-                          b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          b.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (b.company?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-                        )
-                        .map((buyer: BuyerEntry) => (
-                        <tr key={buyer.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarFallback>{buyer.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium text-gray-900 dark:text-white">{buyer.name}</p>
-                                {buyer.company && (
-                                  <p className="text-xs text-gray-500">{buyer.company}</p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{buyer.email}</td>
-                          <td className="px-4 py-3 text-gray-600 dark:text-gray-300 hidden md:table-cell">{buyer.country}</td>
-                          <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">{buyer.date}</td>
-                          <td className="px-4 py-3">
-                            <Badge variant={buyer.blocked ? "destructive" : "secondary"}>
-                              {buyer.blocked ? 'Blocked' : 'Active'}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                                onClick={() => {
-                                  setSelectedBuyer(buyer);
-                                  setShowBuyerDetails(true);
-                                }}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className={`h-8 w-8 p-0 ${buyer.blocked ? 'text-green-600' : 'text-red-600'}`}
-                                onClick={() => {
-                                  store.toggleBlockBuyer(buyer.id);
-                                  toast({ 
-                                    title: buyer.blocked ? "Buyer unblocked" : "Buyer blocked" 
-                                  });
-                                }}
-                              >
-                                {buyer.blocked ? <UserCheck className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
-                              </Button>
-                              
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-red-600"
-                                onClick={() => {
-                                  if (window.confirm('Delete this buyer?')) {
-                                    store.deleteBuyer(buyer.id);
-                                    toast({ title: "Buyer deleted" });
-                                  }
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
+              </CardHeader>
+              <CardContent className="p-0">
+                {filteredBuyers.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                    <p className="text-slate-500 dark:text-slate-400">No buyers found</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-slate-900">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Buyer</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Contact</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Company</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Country</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Activity</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                        {filteredBuyers.map((buyer) => (
+                          <tr key={buyer?.id || Math.random()} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400 text-xs">
+                                    {buyer.name?.charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-slate-900 dark:text-white">{buyer.name}</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">ID: {buyer.id?.slice(-8)}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="space-y-1">
+                                <p className="text-sm text-slate-900 dark:text-white">{buyer.email}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{buyer.phone}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">{buyer.company || 'N/A'}</p>
+                            </td>
+                            <td className="px-4 py-3 hidden md:table-cell">
+                              <Badge variant="outline" className="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                                {buyer.country}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                                  <FileText className="w-3 h-3" />
+                                  <span>{(buyer as any).quotationsCount || 0} quotes</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                                  <DollarSign className="w-3 h-3" />
+                                  <span>${(buyer as any).totalSpent?.toLocaleString() || 0}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className={getStatusColor(buyer.blocked ? 'blocked' : 'active')}>
+                                {buyer.blocked ? 'Blocked' : 'Active'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/50"
+                                  onClick={() => handleViewBuyer(buyer)}
+                                  title="View Details"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className={`h-8 w-8 p-0 ${
+                                    buyer?.blocked 
+                                      ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/50' 
+                                      : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50'
+                                  }`}
+                                  onClick={() => {
+                                    store.toggleBlockBuyer(buyer.id, buyer.userId);
+                                    toast({ 
+                                      title: buyer.blocked ? "Buyer unblocked" : "Buyer blocked" 
+                                    });
+                                  }}
+                                  title={buyer?.blocked ? "Unblock" : "Block"}
+                                >
+                                  {buyer?.blocked ? <UserCheck className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                                </Button>
+                                
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50"
+                                  onClick={() => handleDeleteBuyer(buyer)}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* Suppliers */}
           {activeTab === "suppliers" && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Supplier Management ({store.suppliers.length})</h3>
-                
-                <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value)}>
-                  <SelectTrigger className="w-[130px]">
-                    <SelectValue placeholder="Filter" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="blocked">Blocked</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+              <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-xl text-slate-900 dark:text-white">Supplier Management</CardTitle>
+                    <CardDescription className="text-slate-500 dark:text-slate-400">
+                      Manage and monitor all supplier accounts
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[140px] bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800">
+                        <Filter className="w-4 h-4 mr-2 text-slate-500" />
+                        <SelectValue placeholder="Filter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Suppliers</SelectItem>
+                        <SelectItem value="active">Active Only</SelectItem>
+                        <SelectItem value="blocked">Blocked Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {filteredSuppliers.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Building2 className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                    <p className="text-slate-500 dark:text-slate-400">No suppliers found</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-slate-900">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Supplier</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Company</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Contact</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Country</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Products</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                        {filteredSuppliers.map((supplier) => (
+                          <tr key={supplier?.id || Math.random()} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 text-xs">
+                                    {supplier.name?.charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-slate-900 dark:text-white">{supplier.name}</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">{supplier.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">{supplier.company || 'N/A'}</p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="text-sm text-slate-900 dark:text-white">{supplier.phone}</p>
+                            </td>
+                            <td className="px-4 py-3 hidden md:table-cell">
+                              <Badge variant="outline" className="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                                {supplier.country}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1 max-w-[150px]">
+                                {supplier.exportProducts?.slice(0, 2).map((prod, idx) => (
+                                  <Badge key={idx} variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0 text-xs">
+                                    {prod.length > 10 ? prod.substring(0, 10) + '...' : prod}
+                                  </Badge>
+                                ))}
+                                {supplier.exportProducts && supplier.exportProducts.length > 2 && (
+                                  <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0 text-xs">
+                                    +{supplier.exportProducts.length - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className={getStatusColor(supplier.blocked ? 'blocked' : 'active')}>
+                                {supplier.blocked ? 'Blocked' : 'Active'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/50"
+                                  onClick={() => handleViewSupplier(supplier)}
+                                  title="View Details"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className={`h-8 w-8 p-0 ${
+                                    supplier?.blocked 
+                                      ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/50' 
+                                      : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50'
+                                  }`}
+                                  onClick={() => {
+                                    store.toggleBlockSupplier(supplier.id, supplier.userId);
+                                    toast({ 
+                                      title: supplier.blocked ? "Supplier unblocked" : "Supplier blocked" 
+                                    });
+                                  }}
+                                  title={supplier?.blocked ? "Unblock" : "Block"}
+                                >
+                                  {supplier?.blocked ? <UserCheck className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                                </Button>
+                                
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50"
+                                  onClick={() => handleDeleteSupplier(supplier)}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-              {store.suppliers.length === 0 ? (
-                <p className="p-6 text-center text-gray-500">No supplier registrations yet.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-900">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">Name</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">Company</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400 hidden md:table-cell">Country</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400 hidden lg:table-cell">Products</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">Status</th>
-                        <th className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {store.suppliers
-                        .filter((s: SupplierEntry) => {
-                          if (statusFilter === 'active') return !s.blocked;
-                          if (statusFilter === 'blocked') return s.blocked;
-                          return true;
-                        })
-                        .filter((s: SupplierEntry) => 
-                          s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (s.company?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-                        )
-                        .map((supplier: SupplierEntry) => (
-                        <tr key={supplier.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarFallback>{supplier.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
+          {/* Products */}
+          {activeTab === "products" && (
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-xl text-slate-900 dark:text-white">Product Management</CardTitle>
+                <CardDescription className="text-slate-500 dark:text-slate-400">
+                  Manage product visibility and featured status
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {categories && categories.map((cat) => {
+                    const catProducts = allProducts ? allProducts.filter((p) => p.category === cat.id) : [];
+                    return (
+                      <Card key={cat.id} className="border-slate-200 dark:border-slate-800 overflow-hidden">
+                        <div className="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-slate-900 dark:text-white">{cat.name}</h3>
+                            <Badge variant="outline" className="bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                              {catProducts.length}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                          {catProducts.map((product) => {
+                            const isHidden = hiddenProducts.includes(product.id);
+                            return (
+                              <div key={product.id} className={`p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors ${isHidden ? 'opacity-60' : ''}`}>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center">
+                                    {product.image ? (
+                                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <Package className="w-5 h-5 text-slate-400" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-slate-900 dark:text-white">{product.name}</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">{product.origin}</p>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className={`h-8 ${
+                                    isHidden 
+                                      ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/50' 
+                                      : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/50'
+                                  }`}
+                                  onClick={() => store.toggleProductVisibility(product.id)}
+                                >
+                                  {isHidden ? (
+                                    <><Eye className="w-4 h-4 mr-1" /> Show</>
+                                  ) : (
+                                    <><EyeOff className="w-4 h-4 mr-1" /> Hide</>
+                                  )}
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quotations */}
+          {activeTab === "quotations" && (
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-xl text-slate-900 dark:text-white">Quotation Requests</CardTitle>
+                <CardDescription className="text-slate-500 dark:text-slate-400">
+                  Review and manage buyer quotation requests
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {quotations.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                    <p className="text-slate-500 dark:text-slate-400">No quotation requests yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {quotations.map((q) => {
+                      const buyer = buyers.find(b => b.userId === q.userId);
+                      return (
+                        <Card key={q.id} className="border-slate-200 dark:border-slate-800 overflow-hidden">
+                          <CardContent className="p-6">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+                              <div className="flex items-start gap-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarFallback className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400">
+                                    {q.name?.charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-slate-900 dark:text-white">{q.name}</p>
+                                  <p className="text-sm text-slate-500 dark:text-slate-400">{q.email}</p>
+                                  {buyer && (
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                                      Registered buyer
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <Badge className={
+                                q.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' :
+                                q.status === 'quoted' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
+                                q.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800' :
+                                'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+                              } variant="outline">
+                                {q.status}
+                              </Badge>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                               <div>
-                                <p className="font-medium text-gray-900 dark:text-white">{supplier.name}</p>
-                                <p className="text-xs text-gray-500">{supplier.email}</p>
+                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Products Requested</p>
+                                <div className="space-y-2">
+                                  {q.products.map((p, idx) => (
+                                    <div key={idx} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
+                                      <p className="text-sm font-medium text-slate-900 dark:text-white">{p.name}</p>
+                                      <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                        <span>Qty: {p.quantity}</span>
+                                        {p.price && <span>Unit Price: ${p.price}</span>}
+                                      </div>
+                                      {p.note && (
+                                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 italic">"{p.note}"</p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Details</p>
+                                <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg space-y-2">
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Globe className="w-4 h-4 text-slate-400" />
+                                    <span className="text-slate-700 dark:text-slate-300">{q.country}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Calendar className="w-4 h-4 text-slate-400" />
+                                    <span className="text-slate-700 dark:text-slate-300">{q.date}</span>
+                                  </div>
+                                  {q.totalAmount && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <DollarSign className="w-4 h-4 text-slate-400" />
+                                      <span className="font-medium text-slate-900 dark:text-white">${q.totalAmount.toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{supplier.company}</td>
-                          <td className="px-4 py-3 text-gray-600 dark:text-gray-300 hidden md:table-cell">{supplier.country}</td>
-                          <td className="px-4 py-3 hidden lg:table-cell">
-                            <div className="flex flex-wrap gap-1">
-                              {supplier.exportProducts.slice(0, 2).map((prod: string, idx: number) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
-                                  {prod}
-                                </Badge>
-                              ))}
-                              {supplier.exportProducts.length > 2 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{supplier.exportProducts.length - 2}
-                                </Badge>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge variant={supplier.blocked ? "destructive" : "secondary"}>
-                              {supplier.blocked ? 'Blocked' : 'Active'}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1">
+
+                            {q.generalNote && (
+                              <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg mb-4">
+                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">General Note</p>
+                                <p className="text-sm text-slate-700 dark:text-slate-300">{q.generalNote}</p>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                               <Button
                                 size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
+                                variant="outline"
+                                className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
                                 onClick={() => {
-                                  setSelectedSupplier(supplier);
-                                  setShowSupplierDetails(true);
+                                  store.updateQuotationStatus(q.id, 'approved');
+                                  toast({ title: "Quotation approved" });
                                 }}
                               >
-                                <Eye className="w-4 h-4" />
+                                <CheckCircle2 className="w-4 h-4" />
+                                Approve
                               </Button>
-                              
                               <Button
                                 size="sm"
-                                variant="ghost"
-                                className={`h-8 w-8 p-0 ${supplier.blocked ? 'text-green-600' : 'text-red-600'}`}
+                                variant="outline"
+                                className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/50"
                                 onClick={() => {
-                                  store.toggleBlockSupplier(supplier.id);
-                                  toast({ 
-                                    title: supplier.blocked ? "Supplier unblocked" : "Supplier blocked" 
-                                  });
+                                  store.updateQuotationStatus(q.id, 'quoted');
+                                  toast({ title: "Quote sent" });
                                 }}
                               >
-                                {supplier.blocked ? <UserCheck className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                                <FileText className="w-4 h-4" />
+                                Send Quote
                               </Button>
-                              
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-8 w-8 p-0 text-red-600"
+                                className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50"
                                 onClick={() => {
-                                  if (window.confirm('Delete this supplier?')) {
-                                    store.deleteSupplier(supplier.id);
-                                    toast({ title: "Supplier deleted" });
+                                  if (window.confirm('Delete this quotation?')) {
+                                    store.deleteQuotation(q.id);
+                                    toast({ title: "Quotation deleted" });
                                   }
                                 }}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Products */}
-          {activeTab === "products" && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Toggle product visibility. Hidden products won't appear on the website.
-              </p>
-              
-              {categories.map((cat) => {
-                const catProducts = allProducts.filter((p) => p.category === cat.id);
-                return (
-                  <div key={cat.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {cat.name} ({catProducts.length})
-                      </h3>
-                    </div>
-                    <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {catProducts.map((product) => {
-                        const isHidden = store.hiddenProducts.includes(product.id);
-                        return (
-                          <div key={product.id} className={`p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isHidden ? 'opacity-60' : ''}`}>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-                                {product.image && (
-                                  <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900 dark:text-white">{product.name}</p>
-                                <p className="text-sm text-gray-500">{product.origin}</p>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className={`h-8 ${isHidden ? 'text-green-600' : 'text-gray-600'}`}
-                              onClick={() => store.toggleProductVisibility(product.id)}
-                            >
-                              {isHidden ? (
-                                <><Eye className="w-4 h-4 mr-1" /> Show</>
-                              ) : (
-                                <><EyeOff className="w-4 h-4 mr-1" /> Hide</>
-                              )}
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Quotations */}
-          {activeTab === "quotations" && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Quotation Requests ({store.quotations.length})</h3>
-              </div>
-
-              {store.quotations.length === 0 ? (
-                <p className="p-6 text-center text-gray-500">No quotation requests yet.</p>
-              ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {store.quotations.map((q: QuotationEntry) => (
-                    <div key={q.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{q.name}</p>
-                          <p className="text-sm text-gray-600">{q.email}</p>
-                          <p className="text-xs text-gray-500 mt-1">{q.country} • {q.date}</p>
-                          
-                          <div className="mt-2 space-y-1">
-                            {q.products.map((p: { name: string; quantity: number; note: string }, idx: number) => (
-                              <p key={idx} className="text-sm text-gray-700 dark:text-gray-300">
-                                • {p.name} × {p.quantity}
-                              </p>
-                            ))}
-                          </div>
-                          
-                          {q.generalNote && (
-                            <p className="text-sm text-gray-600 mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded">
-                              Note: {q.generalNote}
-                            </p>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Badge variant={
-                            q.status === 'approved' ? 'default' : 
-                            q.status === 'quoted' ? 'secondary' : 'outline'
-                          }>
-                            {q.status}
-                          </Badge>
-                          
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-red-600"
-                            onClick={() => {
-                              if (window.confirm('Delete this quotation?')) {
-                                store.deleteQuotation(q.id);
-                                toast({ title: "Quotation deleted" });
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* Messages */}
           {activeTab === "messages" && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Contact Messages ({store.contactMessages.length})</h3>
-              </div>
-
-              {store.contactMessages.length === 0 ? (
-                <p className="p-6 text-center text-gray-500">No contact messages yet.</p>
-              ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {store.contactMessages.map((msg: ContactMessage) => (
-                    <div key={msg.id} className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${!msg.read ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}`}>
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-gray-900 dark:text-white">{msg.name}</p>
-                            {!msg.read && (
-                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">New</Badge>
-                            )}
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-xl text-slate-900 dark:text-white">Contact Messages</CardTitle>
+                <CardDescription className="text-slate-500 dark:text-slate-400">
+                  Manage customer inquiries and messages
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {contactMessages.length === 0 ? (
+                  <div className="text-center py-12">
+                    <MessageSquare className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                    <p className="text-slate-500 dark:text-slate-400">No messages yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {contactMessages.map((msg) => (
+                      <Card
+                        key={msg.id}
+                        className={`border-slate-200 dark:border-slate-800 overflow-hidden ${
+                          !msg.read ? 'border-l-4 border-l-amber-500' : ''
+                        }`}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback className="bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                                  {msg.name?.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-slate-900 dark:text-white">{msg.name}</p>
+                                  {!msg.read && (
+                                    <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 border-0 text-xs">
+                                      New
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{msg.email}</p>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                  <span>{msg.country}</span>
+                                  <span>•</span>
+                                  <span>{msg.date}</span>
+                                  {msg.phone && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{msg.phone}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
+                                onClick={() => {
+                                  window.location.href = `mailto:${msg.email}?subject=Re: ${msg.subject}`;
+                                  if (!msg.replied) {
+                                    store.markMessageReplied(msg.id);
+                                  }
+                                }}
+                              >
+                                <Mail className="w-4 h-4" />
+                                Reply
+                              </Button>
+                              {!msg.read && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/50"
+                                  onClick={() => {
+                                    store.markMessageRead(msg.id);
+                                    toast({ title: "Message marked as read" });
+                                  }}
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50"
+                                onClick={() => {
+                                  if (window.confirm('Delete this message?')) {
+                                    store.deleteMessage(msg.id);
+                                    toast({ title: "Message deleted" });
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-600">{msg.email}</p>
-                          <p className="text-xs text-gray-500 mt-1">{msg.country} • {msg.date}</p>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white mt-2">{msg.subject}</p>
-                          <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{msg.message}</p>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          {!msg.read && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                store.markMessageRead(msg.id);
-                                toast({ title: "Message marked as read" });
-                              }}
-                            >
-                              <Mail className="w-4 h-4 mr-2" />
-                              Mark Read
-                            </Button>
+
+                          <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Subject: {msg.subject}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{msg.message}</p>
+                          </div>
+
+                          {msg.replied && (
+                            <div className="mt-3 flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Replied</span>
+                            </div>
                           )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-600"
-                            onClick={() => {
-                              if (window.confirm('Delete this message?')) {
-                                store.deleteContactMessage(msg.id);
-                                toast({ title: "Message deleted" });
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* Settings */}
           {activeTab === "settings" && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
-              <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Platform Settings</h3>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">Configure seasonal products, bank details, and platform settings.</p>
-              <p className="text-xs text-gray-500 mt-1">Backend integration required for full functionality.</p>
-            </div>
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+              <CardContent className="p-8 text-center">
+                <Settings className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Platform Settings</h3>
+                <p className="text-slate-500 dark:text-slate-400 mt-2">Configure seasonal products, bank details, and platform settings.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Backend integration required for full functionality.</p>
+                
+                {/* Debug section - remove in production */}
+                <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+                  <h4 className="text-sm font-semibold text-rose-600 dark:text-rose-400 mb-4">Debug Tools</h4>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="bg-rose-600 hover:bg-rose-700 text-white"
+                    onClick={() => {
+                      if (window.confirm('This will clear ALL buyer and supplier data. Are you sure?')) {
+                        store.clearAllData();
+                        toast({ title: "All data cleared", description: "Refresh to see changes." });
+                      }
+                    }}
+                  >
+                    Clear All Data
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       </main>
 
-      {/* Buyer Details Dialog */}
+      {/* Enhanced Buyer Details Dialog */}
       <Dialog open={showBuyerDetails} onOpenChange={setShowBuyerDetails}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
           <DialogHeader>
-            <DialogTitle>Buyer Details</DialogTitle>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+              <Users className="w-6 h-6 text-indigo-600" />
+              Buyer Details
+            </DialogTitle>
           </DialogHeader>
           
           {selectedBuyer && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-16 h-16">
-                  <AvatarFallback className="text-lg">{selectedBuyer.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedBuyer.name}</h3>
-                  <p className="text-gray-500">{selectedBuyer.email}</p>
-                </div>
-              </div>
+            <Tabs defaultValue="overview" className="mt-4">
+              <TabsList className="grid w-full grid-cols-4 bg-slate-100 dark:bg-slate-900 p-1">
+                <TabsTrigger value="overview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-indigo-400">Overview</TabsTrigger>
+                <TabsTrigger value="personal" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-indigo-400">Personal Info</TabsTrigger>
+                <TabsTrigger value="business" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-indigo-400">Business</TabsTrigger>
+                <TabsTrigger value="quotations" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-indigo-400">
+                  Quotations ({buyerQuotations.length})
+                </TabsTrigger>
+              </TabsList>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Phone</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{selectedBuyer.phone}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Country</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{selectedBuyer.country}</p>
-                </div>
-                {selectedBuyer.company && (
-                  <div>
-                    <p className="text-sm text-gray-500">Company</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedBuyer.company}</p>
-                  </div>
+              <TabsContent value="overview" className="space-y-4 mt-4">
+                <Card className="border-slate-200 dark:border-slate-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base text-slate-900 dark:text-white">Activity Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div className="bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-lg">
+                        <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">Total Spent</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          ${selectedBuyer.totalSpent?.toLocaleString() || '0'}
+                        </p>
+                      </div>
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-lg">
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">Quotations</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {selectedBuyer.quotationsCount || 0}
+                        </p>
+                      </div>
+                      <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-lg">
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Avg. Order</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          ${selectedBuyer.averageOrderValue?.toLocaleString() || '0'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm border-t border-slate-200 dark:border-slate-800 pt-4">
+                      <div>
+                        <p className="text-slate-500 dark:text-slate-400">Last Active</p>
+                        <p className="font-medium text-slate-900 dark:text-white">{selectedBuyer.lastActive || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500 dark:text-slate-400">Registered</p>
+                        <p className="font-medium text-slate-900 dark:text-white">{selectedBuyer.date}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="personal" className="space-y-4 mt-4">
+                <Card className="border-slate-200 dark:border-slate-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
+                      <User className="w-4 h-4 text-indigo-600" />
+                      Personal Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Full Name</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.name}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Email</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.email}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Phone</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.phone}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Country</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.country}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">City</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.city || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Port</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.port || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="business" className="space-y-4 mt-4">
+                <Card className="border-slate-200 dark:border-slate-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
+                      <Building2 className="w-4 h-4 text-indigo-600" />
+                      Business Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Company</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.company || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Business Type</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.businessType || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Years in Business</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.yearsInBusiness || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Tax ID</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.taxId || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Website</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">
+                          {selectedBuyer.website ? (
+                            <a href={selectedBuyer.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                              {selectedBuyer.website}
+                            </a>
+                          ) : 'N/A'}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Annual Volume</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">
+                          {selectedBuyer.annualVolume ? `$${selectedBuyer.annualVolume}` : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Products of Interest</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedBuyer.productsOfInterest ? (
+                          selectedBuyer.productsOfInterest.split(', ').map((product, idx) => (
+                            <Badge key={idx} variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0">
+                              {product}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-slate-500 dark:text-slate-400">No products specified</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Newsletter</p>
+                      <Badge variant={selectedBuyer.newsletter ? "default" : "secondary"} className={
+                        selectedBuyer.newsletter 
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0' 
+                          : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-0'
+                      }>
+                        {selectedBuyer.newsletter ? 'Subscribed' : 'Not Subscribed'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="quotations" className="space-y-4 mt-4">
+                {buyerQuotations.length === 0 ? (
+                  <Card className="border-slate-200 dark:border-slate-800">
+                    <CardContent className="text-center py-8">
+                      <FileText className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                      <p className="text-slate-500 dark:text-slate-400">No quotations from this buyer yet</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  buyerQuotations.map((q, idx) => (
+                    <Card key={q.id} className="border-slate-200 dark:border-slate-800">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base text-slate-900 dark:text-white">Quotation #{idx + 1}</CardTitle>
+                          <Badge className={
+                            q.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' :
+                            q.status === 'quoted' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
+                            q.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800' :
+                            'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+                          } variant="outline">
+                            {q.status}
+                          </Badge>
+                        </div>
+                        <CardDescription className="text-slate-500 dark:text-slate-400">Submitted on {q.date}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {q.products.map((p, pid) => (
+                            <div key={pid} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                              <p className="font-medium text-sm text-slate-900 dark:text-white">{p.name}</p>
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Quantity: {p.quantity}</p>
+                              {p.note && <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 italic">"{p.note}"</p>}
+                            </div>
+                          ))}
+                          {q.generalNote && (
+                            <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                              <p className="text-xs font-medium text-slate-700 dark:text-slate-300">General Note</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{q.generalNote}</p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
                 )}
-                <div>
-                  <p className="text-sm text-gray-500">Registered</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{selectedBuyer.date}</p>
-                </div>
-                {selectedBuyer.city && (
-                  <div>
-                    <p className="text-sm text-gray-500">City</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedBuyer.city}</p>
-                  </div>
-                )}
-                {selectedBuyer.productsOfInterest && (
-                  <div>
-                    <p className="text-sm text-gray-500">Products of Interest</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedBuyer.productsOfInterest}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Supplier Details Dialog */}
+      {/* Enhanced Supplier Details Dialog */}
       <Dialog open={showSupplierDetails} onOpenChange={setShowSupplierDetails}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
           <DialogHeader>
-            <DialogTitle>Supplier Details</DialogTitle>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+              <Building2 className="w-6 h-6 text-emerald-600" />
+              Supplier Details
+            </DialogTitle>
           </DialogHeader>
           
           {selectedSupplier && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-16 h-16">
-                  <AvatarFallback className="text-lg">{selectedSupplier.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedSupplier.name}</h3>
-                  <p className="text-gray-500">{selectedSupplier.email}</p>
-                </div>
-              </div>
+            <Tabs defaultValue="company" className="mt-4">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-900 p-1">
+                <TabsTrigger value="company" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400">Company Info</TabsTrigger>
+                <TabsTrigger value="products" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400">Products</TabsTrigger>
+                <TabsTrigger value="trade" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400">Trade Info</TabsTrigger>
+              </TabsList>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Company</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{selectedSupplier.company}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Phone</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{selectedSupplier.phone}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Country</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{selectedSupplier.country}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Registered</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{selectedSupplier.date}</p>
-                </div>
-                {selectedSupplier.website && (
-                  <div>
-                    <p className="text-sm text-gray-500">Website</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedSupplier.website}</p>
-                  </div>
-                )}
-                {selectedSupplier.capacity && (
-                  <div>
-                    <p className="text-sm text-gray-500">Capacity</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedSupplier.capacity}</p>
-                  </div>
-                )}
-              </div>
+              <TabsContent value="company" className="space-y-4 mt-4">
+                <Card className="border-slate-200 dark:border-slate-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
+                      <Building2 className="w-4 h-4 text-emerald-600" />
+                      Company Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Company Name</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.company || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Contact Person</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.name}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Email</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.email}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Phone</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.phone}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Country</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.country}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Port</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.port || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Business Type</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.businessType || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Year Established</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.yearEstablished || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Employees</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.employeeCount || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Annual Revenue</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">
+                          {selectedSupplier.currentRevenue ? `$${selectedSupplier.currentRevenue}` : 'N/A'}
+                        </p>
+                      </div>
+                      <div className="space-y-1 md:col-span-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Website</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800 break-all">
+                          {selectedSupplier.website ? (
+                            <a href={selectedSupplier.website} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">
+                              {selectedSupplier.website}
+                            </a>
+                          ) : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 flex gap-2">
+                      <Badge variant={selectedSupplier.blocked ? "destructive" : "secondary"} className={
+                        selectedSupplier.blocked 
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-0' 
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0'
+                      }>
+                        {selectedSupplier.blocked ? 'Blocked' : 'Active'}
+                      </Badge>
+                      {selectedSupplier.verified && (
+                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0">Verified</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
               
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Export Products</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedSupplier.exportProducts.map((product: string, idx: number) => (
-                    <Badge key={idx} variant="secondary">{product}</Badge>
-                  ))}
-                </div>
-              </div>
+              <TabsContent value="products" className="space-y-4 mt-4">
+                <Card className="border-slate-200 dark:border-slate-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
+                      <Package className="w-4 h-4 text-emerald-600" />
+                      Export Products
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {selectedSupplier.exportProducts?.map((product, idx) => (
+                        <div key={idx} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                          <p className="font-medium text-slate-900 dark:text-white">{product}</p>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {selectedSupplier.productDetails && (
+                      <div className="mt-4">
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Product Details</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                          {selectedSupplier.productDetails}
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-3 gap-4 mt-4">
+                      <div className="bg-indigo-50 dark:bg-indigo-950/30 p-3 rounded-lg">
+                        <p className="text-xs text-indigo-600 dark:text-indigo-400">Supply Capacity</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white mt-1">{selectedSupplier.capacity || 'N/A'}</p>
+                      </div>
+                      <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg">
+                        <p className="text-xs text-amber-600 dark:text-amber-400">Min Order</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white mt-1">{selectedSupplier.minOrderQuantity || 'N/A'}</p>
+                      </div>
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-lg">
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400">Lead Time</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white mt-1">{selectedSupplier.leadTime || 'N/A'} days</p>
+                      </div>
+                    </div>
+                    
+                    {selectedSupplier.certificates && selectedSupplier.certificates.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Certificates</p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedSupplier.certificates.map((cert, idx) => (
+                            <Badge key={idx} variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0">
+                              {cert}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
               
-              {selectedSupplier.productDetails && (
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product Details</p>
-                  <p className="text-sm text-gray-600">{selectedSupplier.productDetails}</p>
-                </div>
-              )}
-            </div>
+              <TabsContent value="trade" className="space-y-4 mt-4">
+                <Card className="border-slate-200 dark:border-slate-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
+                      <Globe className="w-4 h-4 text-emerald-600" />
+                      Trade Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Export Markets</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedSupplier.exportMarkets && selectedSupplier.exportMarkets.length > 0 ? (
+                          selectedSupplier.exportMarkets.map((market, idx) => (
+                            <Badge key={idx} variant="outline" className="bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                              {market}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-slate-500 dark:text-slate-400">No markets specified</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Payment Terms</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedSupplier.preferredPaymentTerms && selectedSupplier.preferredPaymentTerms.length > 0 ? (
+                          selectedSupplier.preferredPaymentTerms.map((term, idx) => (
+                            <Badge key={idx} variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0">
+                              {term}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-slate-500 dark:text-slate-400">No payment terms specified</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {selectedSupplier.bankName && (
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Banking Information</p>
+                        <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1">
+                          <p className="text-sm"><span className="text-slate-500 dark:text-slate-400">Bank:</span> <span className="text-slate-900 dark:text-white">{selectedSupplier.bankName}</span></p>
+                          <p className="text-sm"><span className="text-slate-500 dark:text-slate-400">Account:</span> <span className="text-slate-900 dark:text-white">{selectedSupplier.bankAccount}</span></p>
+                          <p className="text-sm"><span className="text-slate-500 dark:text-slate-400">SWIFT:</span> <span className="text-slate-900 dark:text-white">{selectedSupplier.swiftCode}</span></p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-indigo-50 dark:bg-indigo-950/30 p-3 rounded-lg">
+                          <p className="text-xs text-indigo-600 dark:text-indigo-400">Total Orders</p>
+                          <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedSupplier.totalOrders || 0}</p>
+                        </div>
+                        <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-lg">
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400">Total Revenue</p>
+                          <p className="text-lg font-bold text-slate-900 dark:text-white">${selectedSupplier.totalRevenue?.toLocaleString() || '0'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
@@ -852,31 +1654,33 @@ const Admin: React.FC = () => {
       <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Confirm Logout</DialogTitle>
+            <DialogTitle className="text-xl text-slate-900 dark:text-white">Confirm Logout</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
-            <p className="text-sm text-gray-500">Re-enter your credentials to confirm logout.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Re-enter your credentials to confirm logout.</p>
             
             <Input
               placeholder="Admin Email"
               type="email"
               value={logoutEmail}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLogoutEmail(e.target.value)}
+              onChange={(e) => setLogoutEmail(e.target.value)}
+              className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-500"
             />
             
             <Input
               placeholder="Admin Password"
               type="password"
               value={logoutPassword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLogoutPassword(e.target.value)}
+              onChange={(e) => setLogoutPassword(e.target.value)}
+              className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-500"
             />
             
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowLogoutDialog(false)} className="flex-1">
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowLogoutDialog(false)} className="flex-1 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
                 Cancel
               </Button>
-              <Button onClick={handleLogout} className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+              <Button onClick={handleLogout} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white">
                 Logout
               </Button>
             </div>

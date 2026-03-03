@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useAuthStore } from './authStore';
 
 export interface BuyerEntry {
   id: string;
+  userId: string;
   name: string;
   email: string;
   company?: string;
@@ -17,10 +19,30 @@ export interface BuyerEntry {
   status?: 'active' | 'inactive' | 'blocked';
   totalQuotations?: number;
   lastActive?: string;
+  businessType?: string;
+  yearsInBusiness?: string;
+  taxId?: string;
+  website?: string;
+  reference?: string;
+  newsletter?: boolean;
+  username?: string;
+}
+
+// Define a proper type for supplier products
+export interface SupplierProduct {
+  id: string;
+  name: string;
+  category: string;
+  price?: number;
+  unit?: string;
+  description?: string;
+  image?: string;
+  [key: string]: unknown;
 }
 
 export interface SupplierEntry {
   id: string;
+  userId: string;
   name: string;
   email: string;
   company?: string;
@@ -37,10 +59,31 @@ export interface SupplierEntry {
   status?: 'pending' | 'approved' | 'rejected' | 'blocked';
   totalProducts?: number;
   lastActive?: string;
+  businessType?: string;
+  yearEstablished?: string;
+  employeeCount?: string;
+  currentRevenue?: string;
+  city?: string;
+  address?: string;
+  warehouseLocation?: string;
+  designation?: string;
+  exportMarkets?: string[];
+  minOrderQuantity?: string;
+  leadTime?: string;
+  preferredPaymentTerms?: string[];
+  bankName?: string;
+  bankAccount?: string;
+  swiftCode?: string;
+  certificates?: string[];
+  products?: SupplierProduct[];  // Fixed: changed from any[] to SupplierProduct[]
+  registrationDate?: string;
+  emailVerified?: boolean;
+  username?: string;
 }
 
 export interface ContactMessage {
   id: string;
+  userId: string;
   name: string;
   email: string;
   company?: string;
@@ -55,6 +98,7 @@ export interface ContactMessage {
 
 export interface QuotationEntry {
   id: string;
+  userId: string;
   name: string;
   email: string;
   company?: string;
@@ -63,7 +107,7 @@ export interface QuotationEntry {
   products: { name: string; quantity: number; note: string; price?: number }[];
   generalNote?: string;
   date: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'quoted';
   totalAmount?: number;
   buyerId?: string;
 }
@@ -85,8 +129,17 @@ export interface ProductEntry {
   createdAt: string;
 }
 
+interface PersistedState {
+  buyers: BuyerEntry[];
+  suppliers: SupplierEntry[];
+  contactMessages: ContactMessage[];
+  quotations: QuotationEntry[];
+  products: ProductEntry[];
+  hiddenProducts: string[];
+  [key: string]: unknown;
+}
+
 interface AdminStore {
-  // Data
   buyers: BuyerEntry[];
   suppliers: SupplierEntry[];
   contactMessages: ContactMessage[];
@@ -94,44 +147,43 @@ interface AdminStore {
   products: ProductEntry[];
   hiddenProducts: string[];
   
-  // Methods
-  addBuyer: (buyer: Omit<BuyerEntry, 'id' | 'date' | 'blocked' | 'status' | 'totalQuotations' | 'lastActive'>) => void;
-  addSupplier: (supplier: Omit<SupplierEntry, 'id' | 'date' | 'blocked' | 'verified' | 'status' | 'totalProducts' | 'lastActive'>) => void;
-  addContactMessage: (msg: Omit<ContactMessage, 'id' | 'date' | 'read' | 'replied'>) => void;
-  addQuotation: (q: Omit<QuotationEntry, 'id' | 'date' | 'status' | 'totalAmount'>) => void;
+  addBuyer: (userId: string, buyer: Omit<BuyerEntry, 'id' | 'userId' | 'date' | 'blocked' | 'status' | 'totalQuotations' | 'lastActive'>) => void;
+  addSupplier: (userId: string, supplier: Omit<SupplierEntry, 'id' | 'userId' | 'date' | 'blocked' | 'verified' | 'status' | 'totalProducts' | 'lastActive'>) => void;
+  addContactMessage: (userId: string, msg: Omit<ContactMessage, 'id' | 'userId' | 'date' | 'read' | 'replied'>) => void;
+  addQuotation: (userId: string, q: Omit<QuotationEntry, 'id' | 'userId' | 'date' | 'status' | 'totalAmount'>) => void;
   addProduct: (product: Omit<ProductEntry, 'id' | 'createdAt'>) => void;
   
-  // Buyer actions
+  getBuyerByUserId: (userId: string) => BuyerEntry | undefined;
+  getSupplierByUserId: (userId: string) => SupplierEntry | undefined;
+  getUserMessages: (userId: string) => ContactMessage[];
+  getUserQuotations: (userId: string) => QuotationEntry[];
+  
   blockBuyer: (id: string) => void;
   unblockBuyer: (id: string) => void;
-  deleteBuyer: (id: string) => void;
+  deleteBuyer: (id: string, userId: string) => void;
   
-  // Supplier actions
   approveSupplier: (id: string) => void;
   rejectSupplier: (id: string) => void;
   blockSupplier: (id: string) => void;
-  deleteSupplier: (id: string) => void;
+  deleteSupplier: (id: string, userId: string) => void;
   
-  // Product actions
   toggleProductStatus: (id: string) => void;
   toggleFeatured: (id: string) => void;
   deleteProduct: (id: string) => void;
   
-  // Quotation actions
-  updateQuotationStatus: (id: string, status: 'pending' | 'approved' | 'rejected') => void;
+  updateQuotationStatus: (id: string, status: 'pending' | 'approved' | 'rejected' | 'quoted') => void;
   deleteQuotation: (id: string) => void;
   
-  // Message actions
   markMessageRead: (id: string) => void;
   markMessageReplied: (id: string) => void;
   deleteMessage: (id: string) => void;
   
-  // Legacy methods (for compatibility)
-  toggleBlockBuyer: (id: string) => void;
-  toggleBlockSupplier: (id: string) => void;
+  toggleBlockBuyer: (id: string, userId: string) => void;
+  toggleBlockSupplier: (id: string, userId: string) => void;
   toggleProductVisibility: (productId: string) => void;
   
-  // Stats
+  clearAllData: () => void;
+  
   getStats: () => {
     totalBuyers: number;
     totalSuppliers: number;
@@ -148,7 +200,6 @@ interface AdminStore {
 let counter = 0;
 const genId = () => `entry-${Date.now()}-${++counter}`;
 
-// Sample data for demonstration
 const sampleProducts: ProductEntry[] = [
   {
     id: 'p1',
@@ -183,7 +234,6 @@ const sampleProducts: ProductEntry[] = [
 export const useAdminStore = create<AdminStore>()(
   persist(
     (set, get) => ({
-      // Initial data
       buyers: [],
       suppliers: [],
       contactMessages: [],
@@ -191,52 +241,75 @@ export const useAdminStore = create<AdminStore>()(
       products: sampleProducts,
       hiddenProducts: [],
 
-      // Add methods
-      addBuyer: (buyer) =>
-        set((s) => ({
-          buyers: [...s.buyers, {
-            ...buyer,
-            id: genId(),
-            date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-            blocked: false,
-            status: 'active',
-            totalQuotations: 0,
-            lastActive: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-          }]
-        })),
+      addBuyer: (userId, buyer) =>
+        set((s) => {
+          const existingBuyerByUserId = s.buyers.find(b => b.userId === userId);
+          const existingBuyerByEmail = s.buyers.find(b => b.email === buyer.email);
+          
+          if (existingBuyerByUserId || existingBuyerByEmail) {
+            console.log("Buyer already exists, cannot add again");
+            return s;
+          }
+          
+          return {
+            buyers: [...s.buyers, {
+              ...buyer,
+              id: genId(),
+              userId,
+              date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+              blocked: false,
+              status: 'active',
+              totalQuotations: 0,
+              lastActive: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            }]
+          };
+        }),
 
-      addSupplier: (supplier) =>
-        set((s) => ({
-          suppliers: [...s.suppliers, {
-            ...supplier,
-            id: genId(),
-            date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-            blocked: false,
-            verified: false,
-            status: 'pending',
-            totalProducts: 0,
-            lastActive: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-          }]
-        })),
+      addSupplier: (userId, supplier) =>
+        set((s) => {
+          const existingSupplierByUserId = s.suppliers.find(sup => sup.userId === userId);
+          const existingSupplierByEmail = s.suppliers.find(sup => sup.email === supplier.email);
+          
+          if (existingSupplierByUserId || existingSupplierByEmail) {
+            console.log("Supplier already exists, cannot add again");
+            return s;
+          }
+          
+          return {
+            suppliers: [...s.suppliers, {
+              ...supplier,
+              id: genId(),
+              userId,
+              date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+              blocked: false,
+              verified: false,
+              status: 'pending',
+              totalProducts: 0,
+              lastActive: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            }]
+          };
+        }),
 
-      addContactMessage: (msg) =>
+      addContactMessage: (userId, msg) =>
         set((s) => ({
           contactMessages: [...s.contactMessages, {
             ...msg,
             id: genId(),
+            userId,
             date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
             read: false,
             replied: false
           }]
         })),
 
-      addQuotation: (q) =>
+      addQuotation: (userId, q) =>
         set((s) => {
           const totalAmount = q.products.reduce((sum, p) => sum + (p.price || 0) * p.quantity, 0);
           return {
             quotations: [...s.quotations, {
               ...q,
               id: genId(),
+              userId,
               date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
               status: 'pending',
               totalAmount
@@ -253,7 +326,22 @@ export const useAdminStore = create<AdminStore>()(
           }]
         })),
 
-      // Buyer actions
+      getBuyerByUserId: (userId) => {
+        return get().buyers.find(b => b.userId === userId);
+      },
+
+      getSupplierByUserId: (userId) => {
+        return get().suppliers.find(s => s.userId === userId);
+      },
+
+      getUserMessages: (userId) => {
+        return get().contactMessages.filter(m => m.userId === userId);
+      },
+
+      getUserQuotations: (userId) => {
+        return get().quotations.filter(q => q.userId === userId);
+      },
+
       blockBuyer: (id) =>
         set((s) => ({
           buyers: s.buyers.map((b) =>
@@ -268,10 +356,19 @@ export const useAdminStore = create<AdminStore>()(
           )
         })),
 
-      deleteBuyer: (id) =>
-        set((s) => ({ buyers: s.buyers.filter((b) => b.id !== id) })),
+      deleteBuyer: (id, userId) => {
+        console.log(`Deleting buyer with id: ${id} and userId: ${userId}`);
+        
+        const { deleteUser } = useAuthStore.getState();
+        if (deleteUser) {
+          deleteUser(userId);
+        }
+        
+        set((s) => ({ 
+          buyers: s.buyers.filter((b) => b.id !== id) 
+        }));
+      },
 
-      // Supplier actions
       approveSupplier: (id) =>
         set((s) => ({
           suppliers: s.suppliers.map((sup) =>
@@ -293,10 +390,19 @@ export const useAdminStore = create<AdminStore>()(
           )
         })),
 
-      deleteSupplier: (id) =>
-        set((s) => ({ suppliers: s.suppliers.filter((sup) => sup.id !== id) })),
+      deleteSupplier: (id, userId) => {
+        console.log(`Deleting supplier with id: ${id} and userId: ${userId}`);
+        
+        const { deleteUser } = useAuthStore.getState();
+        if (deleteUser) {
+          deleteUser(userId);
+        }
+        
+        set((s) => ({ 
+          suppliers: s.suppliers.filter((sup) => sup.id !== id) 
+        }));
+      },
 
-      // Product actions
       toggleProductStatus: (id) =>
         set((s) => ({
           products: s.products.map((p) =>
@@ -314,7 +420,6 @@ export const useAdminStore = create<AdminStore>()(
       deleteProduct: (id) =>
         set((s) => ({ products: s.products.filter((p) => p.id !== id) })),
 
-      // Quotation actions
       updateQuotationStatus: (id, status) =>
         set((s) => ({
           quotations: s.quotations.map((q) =>
@@ -325,7 +430,6 @@ export const useAdminStore = create<AdminStore>()(
       deleteQuotation: (id) =>
         set((s) => ({ quotations: s.quotations.filter((q) => q.id !== id) })),
 
-      // Message actions
       markMessageRead: (id) =>
         set((s) => ({
           contactMessages: s.contactMessages.map((m) =>
@@ -343,8 +447,7 @@ export const useAdminStore = create<AdminStore>()(
       deleteMessage: (id) =>
         set((s) => ({ contactMessages: s.contactMessages.filter((m) => m.id !== id) })),
 
-      // Legacy methods (for compatibility)
-      toggleBlockBuyer: (id) => {
+      toggleBlockBuyer: (id, userId) => {
         const buyer = get().buyers.find(b => b.id === id);
         if (buyer?.blocked) {
           get().unblockBuyer(id);
@@ -353,7 +456,7 @@ export const useAdminStore = create<AdminStore>()(
         }
       },
 
-      toggleBlockSupplier: (id) => {
+      toggleBlockSupplier: (id, userId) => {
         const supplier = get().suppliers.find(s => s.id === id);
         if (supplier?.blocked) {
           set((s) => ({
@@ -376,7 +479,15 @@ export const useAdminStore = create<AdminStore>()(
             : [...s.hiddenProducts, id]
         })),
 
-      // Stats
+      clearAllData: () => 
+        set({ 
+          buyers: [], 
+          suppliers: [], 
+          contactMessages: [], 
+          quotations: [],
+          hiddenProducts: []
+        }),
+
       getStats: () => {
         const state = get();
         return {
@@ -396,6 +507,21 @@ export const useAdminStore = create<AdminStore>()(
     }),
     {
       name: 'admin-storage',
+      version: 6,
+      migrate: (persistedState: unknown, version: number): PersistedState => {
+        const state = persistedState as PersistedState;
+        if (version < 6) {
+          return {
+            ...state,
+            buyers: [],
+            suppliers: [],
+            contactMessages: [],
+            quotations: [],
+            hiddenProducts: []
+          };
+        }
+        return state;
+      },
     }
   )
 );
