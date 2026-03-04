@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
 
 export interface BuyerEntry {
@@ -28,7 +28,6 @@ export interface BuyerEntry {
   username?: string;
 }
 
-// Define a proper type for supplier products
 export interface SupplierProduct {
   id: string;
   name: string;
@@ -75,7 +74,7 @@ export interface SupplierEntry {
   bankAccount?: string;
   swiftCode?: string;
   certificates?: string[];
-  products?: SupplierProduct[];  // Fixed: changed from any[] to SupplierProduct[]
+  products?: SupplierProduct[];
   registrationDate?: string;
   emailVerified?: boolean;
   username?: string;
@@ -183,6 +182,8 @@ interface AdminStore {
   toggleProductVisibility: (productId: string) => void;
   
   clearAllData: () => void;
+  syncWithAuth: () => void; // New function
+  cleanupOrphanedData: () => void; // New function
   
   getStats: () => {
     totalBuyers: number;
@@ -241,8 +242,20 @@ export const useAdminStore = create<AdminStore>()(
       products: sampleProducts,
       hiddenProducts: [],
 
-      addBuyer: (userId, buyer) =>
+      addBuyer: (userId, buyer) => {
+        console.log('[AdminStore] Adding buyer with userId:', userId);
+        
+        // First check if user exists in auth store
+        const authStore = useAuthStore.getState();
+        const userExists = authStore.users.some(u => u.id === userId);
+        
+        if (!userExists) {
+          console.error('[AdminStore] Cannot add buyer: User does not exist in auth store');
+          return;
+        }
+        
         set((s) => {
+          // Check for existing buyer
           const existingBuyerByUserId = s.buyers.find(b => b.userId === userId);
           const existingBuyerByEmail = s.buyers.find(b => b.email === buyer.email);
           
@@ -251,19 +264,29 @@ export const useAdminStore = create<AdminStore>()(
             return s;
           }
           
-          return {
-            buyers: [...s.buyers, {
-              ...buyer,
-              id: genId(),
-              userId,
-              date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-              blocked: false,
-              status: 'active',
-              totalQuotations: 0,
-              lastActive: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-            }]
+          const newBuyer = {
+            ...buyer,
+            id: genId(),
+            userId,
+            date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+            blocked: false,
+            status: 'active' as const,
+            totalQuotations: 0,
+            lastActive: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
           };
-        }),
+          
+          console.log('[AdminStore] New buyer created:', newBuyer);
+          
+          return {
+            buyers: [...s.buyers, newBuyer]
+          };
+        });
+        
+        // Sync with auth store
+        setTimeout(() => {
+          get().syncWithAuth();
+        }, 100);
+      },
 
       addSupplier: (userId, supplier) =>
         set((s) => {
@@ -357,16 +380,82 @@ export const useAdminStore = create<AdminStore>()(
         })),
 
       deleteBuyer: (id, userId) => {
-        console.log(`Deleting buyer with id: ${id} and userId: ${userId}`);
+        console.log(`[AdminStore] ========== STARTING BUYER DELETION ==========`);
+        console.log(`[AdminStore] Deleting buyer with id: ${id} and userId: ${userId}`);
         
-        const { deleteUser } = useAuthStore.getState();
-        if (deleteUser) {
-          deleteUser(userId);
+        // First remove from admin store
+        set((s) => {
+          console.log(`[AdminStore] Buyers before deletion:`, s.buyers.map(b => ({ id: b.id, userId: b.userId, email: b.email })));
+          const newBuyers = s.buyers.filter((b) => b.id !== id);
+          console.log(`[AdminStore] Buyers after deletion:`, newBuyers.map(b => ({ id: b.id, userId: b.userId, email: b.email })));
+          return { buyers: newBuyers };
+        });
+        
+        // Then delete from auth store
+        try {
+          const authStore = useAuthStore.getState();
+          
+          if (authStore.deleteUser) {
+            console.log(`[AdminStore] Calling authStore.deleteUser for userId: ${userId}`);
+            authStore.deleteUser(userId);
+          }
+          
+          // Force sync both stores
+          setTimeout(() => {
+            // Force auth store to sync
+            const authState = useAuthStore.getState();
+            if (authState.forceSync) {
+              authState.forceSync();
+            }
+            
+            // Force admin store to sync
+            const adminState = get();
+            set({ ...adminState });
+            
+            // Direct localStorage update for auth store
+            try {
+              const authStorage = localStorage.getItem('auth-storage');
+              if (authStorage) {
+                const parsed = JSON.parse(authStorage);
+                const originalLength = parsed.state.users.length;
+                parsed.state.users = parsed.state.users.filter((u: any) => u.id !== userId);
+                
+                if (parsed.state.users.length < originalLength) {
+                  localStorage.setItem('auth-storage', JSON.stringify(parsed));
+                  console.log('[AdminStore] Auth storage updated directly');
+                  
+                  // Dispatch storage event
+                  window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'auth-storage',
+                    newValue: JSON.stringify(parsed),
+                    oldValue: authStorage
+                  }));
+                }
+              }
+            } catch (error) {
+              console.error('[AdminStore] Error in direct localStorage update:', error);
+            }
+            
+            // Verify deletion
+            setTimeout(() => {
+              const authUsers = useAuthStore.getState().users;
+              const userStillExists = authUsers.some(u => u.id === userId);
+              console.log(`[AdminStore] VERIFICATION - User still exists in auth store? ${userStillExists}`);
+              
+              if (userStillExists) {
+                console.log('[AdminStore] WARNING: User still exists after deletion!');
+              } else {
+                console.log('[AdminStore] SUCCESS: User successfully deleted from auth store');
+              }
+            }, 500);
+            
+          }, 200);
+          
+        } catch (error) {
+          console.error('[AdminStore] Error in deleteBuyer:', error);
         }
         
-        set((s) => ({ 
-          buyers: s.buyers.filter((b) => b.id !== id) 
-        }));
+        console.log(`[AdminStore] ========== BUYER DELETION COMPLETE ==========`);
       },
 
       approveSupplier: (id) =>
@@ -391,16 +480,34 @@ export const useAdminStore = create<AdminStore>()(
         })),
 
       deleteSupplier: (id, userId) => {
-        console.log(`Deleting supplier with id: ${id} and userId: ${userId}`);
+        console.log(`[AdminStore] Deleting supplier with id: ${id} and userId: ${userId}`);
         
-        const { deleteUser } = useAuthStore.getState();
-        if (deleteUser) {
-          deleteUser(userId);
+        set((s) => {
+          console.log(`[AdminStore] Suppliers before: ${s.suppliers.length}`);
+          const newSuppliers = s.suppliers.filter((sup) => sup.id !== id);
+          console.log(`[AdminStore] Suppliers after: ${newSuppliers.length}`);
+          return { suppliers: newSuppliers };
+        });
+        
+        try {
+          const authStore = useAuthStore.getState();
+          if (authStore.deleteUser) {
+            authStore.deleteUser(userId);
+          }
+          
+          setTimeout(() => {
+            // Direct localStorage backup
+            const authStorage = localStorage.getItem('auth-storage');
+            if (authStorage) {
+              const parsed = JSON.parse(authStorage);
+              parsed.state.users = parsed.state.users.filter((u: any) => u.id !== userId);
+              localStorage.setItem('auth-storage', JSON.stringify(parsed));
+            }
+          }, 200);
+          
+        } catch (error) {
+          console.error('[AdminStore] Error in deleteSupplier:', error);
         }
-        
-        set((s) => ({ 
-          suppliers: s.suppliers.filter((sup) => sup.id !== id) 
-        }));
       },
 
       toggleProductStatus: (id) =>
@@ -488,6 +595,64 @@ export const useAdminStore = create<AdminStore>()(
           hiddenProducts: []
         }),
 
+      syncWithAuth: () => {
+        console.log('[AdminStore] Syncing with auth store');
+        const authStore = useAuthStore.getState();
+        const currentBuyers = get().buyers;
+        
+        // Remove any buyers whose users no longer exist in auth store
+        const validBuyers = currentBuyers.filter(buyer => 
+          authStore.users.some(u => u.id === buyer.userId)
+        );
+        
+        if (validBuyers.length !== currentBuyers.length) {
+          console.log(`[AdminStore] Removing ${currentBuyers.length - validBuyers.length} orphaned buyers`);
+          set({ buyers: validBuyers });
+        }
+      },
+
+      cleanupOrphanedData: () => {
+        console.log('[AdminStore] Running orphaned data cleanup');
+        const authStore = useAuthStore.getState();
+        const state = get();
+        
+        // Clean up buyers
+        const validBuyers = state.buyers.filter(buyer => 
+          authStore.users.some(u => u.id === buyer.userId)
+        );
+        
+        // Clean up suppliers
+        const validSuppliers = state.suppliers.filter(supplier => 
+          authStore.users.some(u => u.id === supplier.userId)
+        );
+        
+        // Clean up quotations
+        const validQuotations = state.quotations.filter(quotation => 
+          authStore.users.some(u => u.id === quotation.userId)
+        );
+        
+        // Clean up messages
+        const validMessages = state.contactMessages.filter(message => 
+          authStore.users.some(u => u.id === message.userId)
+        );
+        
+        const changes = {
+          buyers: state.buyers.length - validBuyers.length,
+          suppliers: state.suppliers.length - validSuppliers.length,
+          quotations: state.quotations.length - validQuotations.length,
+          messages: state.contactMessages.length - validMessages.length,
+        };
+        
+        console.log('[AdminStore] Cleanup removed:', changes);
+        
+        set({
+          buyers: validBuyers,
+          suppliers: validSuppliers,
+          quotations: validQuotations,
+          contactMessages: validMessages,
+        });
+      },
+
       getStats: () => {
         const state = get();
         return {
@@ -507,21 +672,35 @@ export const useAdminStore = create<AdminStore>()(
     }),
     {
       name: 'admin-storage',
-      version: 6,
+      version: 7, // Increased version
+      storage: createJSONStorage(() => localStorage),
       migrate: (persistedState: unknown, version: number): PersistedState => {
+        console.log(`[AdminStore] Migrating from version ${version} to 7`);
         const state = persistedState as PersistedState;
-        if (version < 6) {
-          return {
-            ...state,
-            buyers: [],
-            suppliers: [],
-            contactMessages: [],
-            quotations: [],
-            hiddenProducts: []
-          };
-        }
-        return state;
+        
+        // Ensure all arrays exist
+        return {
+          buyers: state?.buyers || [],
+          suppliers: state?.suppliers || [],
+          contactMessages: state?.contactMessages || [],
+          quotations: state?.quotations || [],
+          hiddenProducts: state?.hiddenProducts || [],
+          products: state?.products || sampleProducts,
+        };
       },
     }
   )
 );
+
+// Run cleanup on store initialization
+setTimeout(() => {
+  const adminStore = useAdminStore.getState();
+  if (adminStore.cleanupOrphanedData) {
+    adminStore.cleanupOrphanedData();
+  }
+  
+  const authStore = useAuthStore.getState();
+  if (authStore.cleanupOrphanedUsers) {
+    authStore.cleanupOrphanedUsers();
+  }
+}, 500);

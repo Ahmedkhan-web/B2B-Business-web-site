@@ -1,3 +1,5 @@
+import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -10,34 +12,26 @@ import {
   Lock, Globe2, Building2, CheckCircle2, Mail, ArrowRight, ClipboardCheck, Scale, Archive, Fingerprint,
   Search, ShieldCheck, MapPin, Edit3, Save, Trash2, Briefcase, Calendar, DollarSign, FileText, Hash, Eye, CheckCircle
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
 import { countries, CountryInfo } from "@/lib/countryData"; 
 import { validatePhone } from "@/lib/validationUtils";
 import { useAdminStore } from "@/lib/adminStore";
 import { useAuthStore } from "@/lib/authStore";
 import { useQuoteStore } from "@/lib/quoteStore";
-import { Link } from "react-router-dom";
-
-// Import the QuoteItem type from quoteStore
 import { QuoteItem } from "@/lib/quoteStore";
 
-// Define props type for MessageCenter
-interface MessageCenterProps {
-  messagesList: Array<{
-    id: number;
-    text: string;
-    sender: string;
-    time: string;
-  }>;
-  setMessagesList: React.Dispatch<React.SetStateAction<Array<{
-    id: number;
-    text: string;
-    sender: string;
-    time: string;
-  }>>>;
+// Define types
+interface Message {
+  id: number;
+  text: string;
+  sender: string;
+  time: string;
 }
 
-// Define props type for ProfileSettings
+interface MessageCenterProps {
+  messagesList: Message[];
+  setMessagesList: React.Dispatch<React.SetStateAction<Message[]>>;
+}
+
 interface ProfileSettingsProps {
   name: string;
   company: string;
@@ -74,8 +68,7 @@ interface ProfileSettingsProps {
   phoneLengths: number[];
 }
 
-// Define interface for application details with proper typing
-interface ApplicationDetails {
+interface QuotationsDetails {
   id: string;
   submissionDate: string;
   items: QuoteItem[];
@@ -104,12 +97,11 @@ const SuccessPopup = ({ message, onClose }: { message: string; onClose: () => vo
   );
 };
 
-// Move MessageCenter outside of Register component
+// MessageCenter Component
 const MessageCenter = ({ messagesList, setMessagesList }: MessageCenterProps) => {
   const [newMessage, setNewMessage] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messagesList]);
@@ -118,7 +110,7 @@ const MessageCenter = ({ messagesList, setMessagesList }: MessageCenterProps) =>
     e?.preventDefault();
     if (!newMessage.trim()) return;
 
-    const msg = {
+    const msg: Message = {
       id: Date.now(),
       text: newMessage,
       sender: "user",
@@ -179,16 +171,16 @@ const MessageCenter = ({ messagesList, setMessagesList }: MessageCenterProps) =>
   );
 };
 
-// Application Details Modal Component
-const ApplicationDetailsModal = ({ application, onClose }: { application: ApplicationDetails | null, onClose: () => void }) => {
-  if (!application) return null;
+// Quotations Details Modal Component
+const QuotationsDetailsModal = ({ Quotations, onClose }: { Quotations: QuotationsDetails | null, onClose: () => void }) => {
+  if (!Quotations) return null;
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-background border border-white/10 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <FileText className="w-6 h-6 text-primary" /> Application Details
+            <FileText className="w-6 h-6 text-primary" /> Quotations Details
           </h2>
           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
             <X className="w-5 h-5" />
@@ -198,20 +190,20 @@ const ApplicationDetailsModal = ({ application, onClose }: { application: Applic
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-primary/5 rounded-xl">
             <div>
-              <p className="text-[10px] uppercase font-bold text-muted-foreground">Application ID</p>
-              <p className="font-mono text-sm font-bold">{application.id}</p>
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Quotations ID</p>
+              <p className="font-mono text-sm font-bold">{Quotations.id}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase font-bold text-muted-foreground">Submitted</p>
-              <p className="text-sm font-bold">{application.submissionDate}</p>
+              <p className="text-sm font-bold">{Quotations.submissionDate}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase font-bold text-muted-foreground">Status</p>
-              <p className="text-sm font-bold text-yellow-500">{application.status}</p>
+              <p className="text-sm font-bold text-yellow-500">{Quotations.status}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase font-bold text-muted-foreground">Loading Date</p>
-              <p className="text-sm font-bold">{application.loadingDate}</p>
+              <p className="text-sm font-bold">{Quotations.loadingDate}</p>
             </div>
           </div>
 
@@ -220,11 +212,11 @@ const ApplicationDetailsModal = ({ application, onClose }: { application: Applic
             <div className="grid grid-cols-2 gap-4 p-4 bg-black/40 rounded-xl">
               <div>
                 <p className="text-[10px] uppercase font-bold text-muted-foreground">Country of Import</p>
-                <p className="font-bold">{application.appCountry}</p>
+                <p className="font-bold">{Quotations.appCountry}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase font-bold text-muted-foreground">Import Port</p>
-                <p className="font-bold">{application.appPort || "N/A"}</p>
+                <p className="font-bold">{Quotations.appPort || "N/A"}</p>
               </div>
             </div>
           </div>
@@ -232,7 +224,7 @@ const ApplicationDetailsModal = ({ application, onClose }: { application: Applic
           <div>
             <h3 className="text-lg font-bold mb-4">Consignment Items</h3>
             <div className="space-y-4">
-              {application.items.map((item, index) => (
+              {Quotations.items.map((item, index) => (
                 <div key={index} className="p-4 bg-black/40 rounded-xl border border-white/5">
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -273,7 +265,7 @@ const ApplicationDetailsModal = ({ application, onClose }: { application: Applic
   );
 };
 
-// Move ProfileSettings outside of Register component
+// ProfileSettings Component
 const ProfileSettings = ({ 
   name, 
   company, 
@@ -475,7 +467,7 @@ const ProfileSettings = ({
         )}
 
         <div className="mt-8 pt-6 border-t border-white/10">
-          <Button variant="outline" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={() => window.location.reload()}>Logout</Button>
+          <Button variant="outline" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={() => window.location.href = '/'}>Logout</Button>
         </div>
       </div>
 
@@ -492,12 +484,13 @@ const ProfileSettings = ({
   );
 };
 
+// Main Register Component
 const Register = () => {
   const [isRegistered, setIsRegistered] = useState(false);
   const [step, setStep] = useState(1);
   const [view, setView] = useState("dashboard");
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [selectedApplication, setSelectedApplication] = useState<ApplicationDetails | null>(null);
+  const [selectedQuotations, setSelectedQuotations] = useState<QuotationsDetails | null>(null);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -529,7 +522,7 @@ const Register = () => {
   const [reference, setReference] = useState("");
   const [newsletter, setNewsletter] = useState(false);
   
-  // Application State
+  // Quotations State
   const [appCountry, setAppCountry] = useState("");
   const [appPort, setAppPort] = useState("");
   const [loadingDate, setLoadingDate] = useState("");
@@ -537,6 +530,14 @@ const Register = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+
+  // Email availability states
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [emailCheckMessage, setEmailCheckMessage] = useState("");
+  const [usernameCheckMessage, setUsernameCheckMessage] = useState("");
 
   // Profile email verification
   const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -547,7 +548,7 @@ const Register = () => {
   const [verifiedEmail, setVerifiedEmail] = useState("");
 
   // --- NEW FUNCTIONAL STATES ---
-  const [messagesList, setMessagesList] = useState([
+  const [messagesList, setMessagesList] = useState<Message[]>([
     { id: 1, text: "Welcome to the Global Portal support. How can we help?", sender: "support", time: "09:00 AM" }
   ]);
 
@@ -558,7 +559,7 @@ const Register = () => {
   useEffect(() => {
     if (isRegistered) {
       setProfileData({ name, company, email, phone });
-      setVerifiedEmail(email); // Set initial verified email
+      setVerifiedEmail(email);
       setIsEmailVerified(true);
     }
   }, [isRegistered, name, company, email, phone]);
@@ -569,6 +570,54 @@ const Register = () => {
   const phoneLengths = countryInfo?.phoneLength || [];
   const appAvailablePorts = countries.find((c) => c.name === appCountry)?.ports || [];
   const regAvailablePorts = countries.find((c) => c.name === importCountry)?.ports || [];
+
+  // Email availability check with debounce
+  useEffect(() => {
+    const checkEmailAvailability = async () => {
+      if (!email || email.length < 3) {
+        setEmailAvailable(null);
+        setEmailCheckMessage("");
+        return;
+      }
+
+      setIsCheckingEmail(true);
+      
+      // Simulate API call - in real app, this would be an actual API endpoint
+      setTimeout(() => {
+        const isAvailable = useAuthStore.getState().isEmailAvailable(email, 'buyer');
+        setEmailAvailable(isAvailable);
+        setEmailCheckMessage(isAvailable ? "Email is available" : "Email is already registered");
+        setIsCheckingEmail(false);
+      }, 500);
+    };
+
+    const timer = setTimeout(checkEmailAvailability, 500);
+    return () => clearTimeout(timer);
+  }, [email]);
+
+  // Username availability check with debounce
+  useEffect(() => {
+    const checkUsernameAvailability = async () => {
+      if (!username || username.length < 3) {
+        setUsernameAvailable(null);
+        setUsernameCheckMessage("");
+        return;
+      }
+
+      setIsCheckingUsername(true);
+      
+      // Simulate API call
+      setTimeout(() => {
+        const isAvailable = useAuthStore.getState().isUsernameAvailable(username);
+        setUsernameAvailable(isAvailable);
+        setUsernameCheckMessage(isAvailable ? "Username is available" : "Username is already taken");
+        setIsCheckingUsername(false);
+      }, 500);
+    };
+
+    const timer = setTimeout(checkUsernameAvailability, 500);
+    return () => clearTimeout(timer);
+  }, [username]);
 
   const handlePhoneChange = (value: string) => {
     const numbersOnly = value.replace(/\D/g, '');
@@ -595,6 +644,18 @@ const Register = () => {
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check email availability
+    if (!emailAvailable) {
+      setPasswordError(emailAvailable === false ? "Email is already registered. Please use a different email." : "Please check email availability");
+      return;
+    }
+    
+    // Check username availability
+    if (!usernameAvailable) {
+      setPasswordError(usernameAvailable === false ? "Username is already taken. Please choose a different username." : "Please check username availability");
+      return;
+    }
     
     // Validate all required fields
     if (!username) { setPasswordError("Username is required"); return; }
@@ -626,7 +687,23 @@ const Register = () => {
     
     console.log("Starting registration...");
     
-    // First register in auth store - include username
+    // Final availability check before registration
+    const isEmailAvail = useAuthStore.getState().isEmailAvailable(email, 'buyer');
+    const isUsernameAvail = useAuthStore.getState().isUsernameAvailable(username);
+    
+    if (!isEmailAvail) {
+      alert("Email is no longer available. Please go back and choose a different email.");
+      setStep(1);
+      return;
+    }
+    
+    if (!isUsernameAvail) {
+      alert("Username is no longer available. Please go back and choose a different username.");
+      setStep(1);
+      return;
+    }
+    
+    // Register in auth store - include username
     const registered = register({
       name,
       username,
@@ -675,6 +752,9 @@ const Register = () => {
           console.log("Buyer added successfully");
           
           setIsRegistered(true);
+          setSuccessMessage("Registration completed successfully!");
+          setShowSuccessPopup(true);
+          setTimeout(() => setShowSuccessPopup(false), 3000);
         } else {
           console.error("User not found after login");
           alert("Registration completed but there was an issue logging in. Please try logging in manually.");
@@ -682,7 +762,7 @@ const Register = () => {
         }
       }, 100);
     } else {
-      alert("Registration failed. Email may already be in use or username is taken.");
+      alert("Registration failed. Please try again.");
     }
   };
 
@@ -711,8 +791,9 @@ const Register = () => {
     }
     
     // Validate phone number
-    if (phoneLengths.length > 0 && !phoneLengths.includes(profileData.phone.length)) {
-      alert(`Phone number must be ${phoneLengths.join(' or ')} digits`);
+    const phoneLengthsForProfile = countries.find(c => c.name === selectedCountry)?.phoneLength || [];
+    if (phoneLengthsForProfile.length > 0 && !phoneLengthsForProfile.includes(profileData.phone.length)) {
+      alert(`Phone number must be ${phoneLengthsForProfile.join(' or ')} digits`);
       return;
     }
     
@@ -735,17 +816,16 @@ const Register = () => {
     // Simulate sending verification code
     setShowEmailVerification(true);
     setEmailVerificationCode("");
-    // In a real app, you would send an email with a verification code here
     console.log("Verification code sent to:", profileData.email);
   };
 
   const handleVerifyEmail = () => {
-    // Simulate email verification (in real app, this would validate against backend)
+    // Simulate email verification
     if (emailVerificationCode.length === 6) {
       setShowEmailVerification(false);
       setEmailVerificationCode("");
       setIsEmailVerified(true);
-      setVerifiedEmail(profileData.email); // Store the verified email
+      setVerifiedEmail(profileData.email);
       setIsEmailChanged(false);
       
       // Show success popup
@@ -755,9 +835,9 @@ const Register = () => {
     }
   };
 
-  const handleViewApplicationDetails = () => {
-    // Create application details object from current state and cart items
-    const application: ApplicationDetails = {
+  const handleViewQuotationsDetails = () => {
+    // Create Quotations details object from current state and cart items
+    const Quotations: QuotationsDetails = {
       id: "EXP-9921",
       submissionDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
       items: cartItems,
@@ -766,11 +846,10 @@ const Register = () => {
       loadingDate: loadingDate,
       status: "Under Review"
     };
-    setSelectedApplication(application);
+    setSelectedQuotations(Quotations);
   };
 
-  // --- SUB-COMPONENTS ---
-
+  // Dashboard Component
   const Dashboard = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -779,7 +858,7 @@ const Register = () => {
           <h4 className="text-xl font-bold text-secondary">Active Buyer</h4>
         </div>
         <div className="glass-card p-6 border-l-4 border-teal-500">
-          <p className="text-xs uppercase font-bold text-muted-foreground">Applications</p>
+          <p className="text-xs uppercase font-bold text-muted-foreground">Quotationss</p>
           <h4 className="text-xl font-bold">{isSubmitted ? "1 Pending" : "0 Pending"}</h4>
         </div>
         <div className="glass-card p-6 border-l-4 border-gold cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setView("messages")}>
@@ -789,7 +868,7 @@ const Register = () => {
       </div>
       <div className="glass-card p-8 gradient-border">
         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <Package className="w-5 h-5 text-primary" /> Recent Applications
+          <Package className="w-5 h-5 text-primary" /> Recent Quotationss
         </h3>
         {isSubmitted ? (
             <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
@@ -804,15 +883,15 @@ const Register = () => {
                   variant="ghost" 
                   size="sm" 
                   className="text-xs font-bold text-primary flex items-center gap-1"
-                  onClick={handleViewApplicationDetails}
+                  onClick={handleViewQuotationsDetails}
                 >
                   <Eye className="w-3 h-3" /> View Details
                 </Button>
             </div>
         ) : (
             <div className="text-center py-10 border-2 border-dashed border-border/50 rounded-xl">
-              <p className="text-muted-foreground mb-4">You haven't submitted any export applications yet.</p>
-              <Button onClick={() => setView("application")} className="btn-gradient-teal">Create First Application</Button>
+              <p className="text-muted-foreground mb-4">You haven't submitted any export Quotationss yet.</p>
+              <Button onClick={() => setView("Quotations")} className="btn-gradient-teal">Create First Quotations</Button>
             </div>
         )}
       </div>
@@ -832,7 +911,7 @@ const Register = () => {
                 <p className="text-xs text-muted-foreground">{company}</p>
               </div>
               <Button variant={view === "dashboard" ? "default" : "ghost"} className="w-full justify-start gap-3" onClick={() => setView("dashboard")}><LayoutDashboard className="w-4 h-4" /> Dashboard</Button>
-              <Button variant={view === "application" ? "default" : "ghost"} className="w-full justify-start gap-3" onClick={() => setView("application")}><Plus className="w-4 h-4" /> New Application</Button>
+              <Button variant={view === "Quotations" ? "default" : "ghost"} className="w-full justify-start gap-3" onClick={() => setView("Quotations")}><Plus className="w-4 h-4" /> New Quotations</Button>
               <Button variant={view === "messages" ? "default" : "ghost"} className="w-full justify-start gap-3" onClick={() => setView("messages")}><MessageSquare className="w-4 h-4" /> Messages</Button>
               <Button variant={view === "profile" ? "default" : "ghost"} className="w-full justify-start gap-3" onClick={() => setView("profile")}><User className="w-4 h-4" /> Profile Info</Button>
             </aside>
@@ -867,7 +946,7 @@ const Register = () => {
                   phoneLengths={phoneLengths}
                 />
               )}
-              {view === "application" && (
+              {view === "Quotations" && (
                 <div className="glass-card p-8 gradient-border bg-white/5 border-white/10 relative overflow-hidden">
                   {isSubmitted ? (
                     <div className="py-20 text-center animate-in fade-in zoom-in duration-500">
@@ -880,7 +959,7 @@ const Register = () => {
                     <form onSubmit={handleFinalSubmit} className="space-y-8">
                       <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
                         <div>
-                          <h2 className="text-3xl font-bold text-foreground tracking-tight">Formal <span className="text-primary">Application</span></h2>
+                          <h2 className="text-3xl font-bold text-foreground tracking-tight">Formal <span className="text-primary">Quotations</span></h2>
                           <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest mt-1">Export Manifest ID: #EXP-NEW</p>
                         </div>
                       </div>
@@ -978,7 +1057,7 @@ const Register = () => {
                             className="btn-gradient-gold w-full h-16 rounded-2xl font-black text-lg shadow-xl group transition-all" 
                             disabled={cartItems.length === 0 || !appCountry || (appAvailablePorts.length > 0 && !appPort) || !!dateError}
                           >
-                            Complete Application Manifest <Send className="ml-3 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                            Complete Quotations Manifest <Send className="ml-3 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                           </Button>
                         </div>
                       </div>
@@ -991,11 +1070,13 @@ const Register = () => {
         </div>
         <Footer />
         
-        {/* Application Details Modal */}
-        <ApplicationDetailsModal 
-          application={selectedApplication} 
-          onClose={() => setSelectedApplication(null)} 
-        />
+        {/* Quotations Details Modal */}
+        {selectedQuotations && (
+          <QuotationsDetailsModal 
+            Quotations={selectedQuotations} 
+            onClose={() => setSelectedQuotations(null)} 
+          />
+        )}
         
         {/* Success Popup */}
         {showSuccessPopup && (
@@ -1037,18 +1118,45 @@ const Register = () => {
                         <Input placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} className="bg-muted/50 h-11" required />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Username *</label>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1 flex items-center gap-1">
+                          Username *
+                          {isCheckingUsername && <span className="text-xs text-muted-foreground animate-pulse">(checking...)</span>}
+                          {usernameAvailable === true && <CheckCircle className="w-3 h-3 text-green-500" />}
+                          {usernameAvailable === false && <AlertCircle className="w-3 h-3 text-destructive" />}
+                        </label>
                         <Input 
                           placeholder="johndoe88" 
                           value={username} 
                           onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))} 
-                          className="bg-muted/50 h-11" 
+                          className={`bg-muted/50 h-11 ${usernameAvailable === false ? 'border-destructive' : usernameAvailable === true ? 'border-green-500' : ''}`} 
                           required 
                         />
+                        {usernameCheckMessage && (
+                          <p className={`text-xs mt-1 ${usernameAvailable ? 'text-green-500' : 'text-destructive'}`}>
+                            {usernameCheckMessage}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Email *</label>
-                        <Input placeholder="email@company.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-muted/50 h-11" required />
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1 flex items-center gap-1">
+                          Email *
+                          {isCheckingEmail && <span className="text-xs text-muted-foreground animate-pulse">(checking...)</span>}
+                          {emailAvailable === true && <CheckCircle className="w-3 h-3 text-green-500" />}
+                          {emailAvailable === false && <AlertCircle className="w-3 h-3 text-destructive" />}
+                        </label>
+                        <Input 
+                          placeholder="email@company.com" 
+                          type="email" 
+                          value={email} 
+                          onChange={(e) => setEmail(e.target.value)} 
+                          className={`bg-muted/50 h-11 ${emailAvailable === false ? 'border-destructive' : emailAvailable === true ? 'border-green-500' : ''}`} 
+                          required 
+                        />
+                        {emailCheckMessage && (
+                          <p className={`text-xs mt-1 ${emailAvailable ? 'text-green-500' : 'text-destructive'}`}>
+                            {emailCheckMessage}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Password *</label>
@@ -1167,7 +1275,11 @@ const Register = () => {
 
                   {passwordError && <p className="text-destructive text-xs font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {passwordError}</p>}
                   
-                  <Button type="submit" className="w-full btn-gradient-gold py-6 font-bold" disabled={!selectedCountry || !!phoneError}>
+                  <Button 
+                    type="submit" 
+                    className="w-full btn-gradient-gold py-6 font-bold" 
+                    disabled={!selectedCountry || !!phoneError || emailAvailable === false || usernameAvailable === false}
+                  >
                     Continue to Verification →
                   </Button>
                   

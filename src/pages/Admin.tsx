@@ -58,6 +58,7 @@ interface ExtendedBuyerEntry extends BuyerEntry {
   quotationsCount?: number;
   averageOrderValue?: number;
   lastInteraction?: string;
+  username?: string;
 }
 
 interface ExtendedSupplierEntry extends SupplierEntry {
@@ -80,6 +81,22 @@ interface ExtendedSupplierEntry extends SupplierEntry {
   qualityRating?: number;
   completionRate?: number;
   verifiedDate?: string;
+  username?: string;
+}
+
+// Extended type for filtered buyers with calculated fields
+interface FilteredBuyerEntry extends BuyerEntry {
+  totalSpent: number;
+  quotationsCount: number;
+  lastInteraction: string;
+  username?: string;
+}
+
+// Extended type for filtered suppliers with calculated fields
+interface FilteredSupplierEntry extends SupplierEntry {
+  totalOrders: number;
+  totalRevenue: number;
+  username?: string;
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -155,7 +172,7 @@ const Admin: React.FC = () => {
   };
 
   // Safely filter buyers with enhanced data
-  const filteredBuyers = buyers
+  const filteredBuyers: FilteredBuyerEntry[] = buyers
     .filter((b: BuyerEntry) => {
       if (!b) return false;
       if (statusFilter === 'active') return !b.blocked;
@@ -169,7 +186,8 @@ const Admin: React.FC = () => {
         (b.name?.toLowerCase() || '').includes(searchLower) ||
         (b.email?.toLowerCase() || '').includes(searchLower) ||
         (b.company?.toLowerCase() || '').includes(searchLower) ||
-        (b.country?.toLowerCase() || '').includes(searchLower)
+        (b.country?.toLowerCase() || '').includes(searchLower) ||
+        (b.username?.toLowerCase() || '').includes(searchLower)
       );
     })
     .map(b => ({
@@ -178,11 +196,12 @@ const Admin: React.FC = () => {
         .filter(q => q.userId === b.userId && q.status === 'approved')
         .reduce((sum, q) => sum + (q.totalAmount || 0), 0),
       quotationsCount: quotations.filter(q => q.userId === b.userId).length,
-      lastInteraction: b.lastActive || b.date
+      lastInteraction: b.lastActive || b.date,
+      username: b.username
     }));
 
   // Safely filter suppliers with enhanced data
-  const filteredSuppliers = suppliers
+  const filteredSuppliers: FilteredSupplierEntry[] = suppliers
     .filter((s: SupplierEntry) => {
       if (!s) return false;
       if (statusFilter === 'active') return !s.blocked;
@@ -196,7 +215,8 @@ const Admin: React.FC = () => {
         (s.name?.toLowerCase() || '').includes(searchLower) ||
         (s.email?.toLowerCase() || '').includes(searchLower) ||
         (s.company?.toLowerCase() || '').includes(searchLower) ||
-        (s.country?.toLowerCase() || '').includes(searchLower)
+        (s.country?.toLowerCase() || '').includes(searchLower) ||
+        (s.username?.toLowerCase() || '').includes(searchLower)
       );
     })
     .map(s => ({
@@ -204,7 +224,8 @@ const Admin: React.FC = () => {
       totalOrders: quotations.filter(q => q.userId === s.userId).length,
       totalRevenue: quotations
         .filter(q => q.userId === s.userId && q.status === 'approved')
-        .reduce((sum, q) => sum + (q.totalAmount || 0), 0)
+        .reduce((sum, q) => sum + (q.totalAmount || 0), 0),
+      username: s.username
     }));
 
   const handleViewBuyer = (buyer: BuyerEntry): void => {
@@ -218,7 +239,8 @@ const Admin: React.FC = () => {
         .filter(q => q.userId === buyer.userId && q.status === 'approved')
         .reduce((sum, q) => sum + (q.totalAmount || 0), 0) / 
         (quotations.filter(q => q.userId === buyer.userId && q.status === 'approved').length || 1),
-      lastInteraction: buyer.lastActive || buyer.date
+      lastInteraction: buyer.lastActive || buyer.date,
+      username: buyer.username
     };
     setSelectedBuyer(extendedBuyer as ExtendedBuyerEntry);
     
@@ -234,7 +256,8 @@ const Admin: React.FC = () => {
       totalOrders: quotations.filter(q => q.userId === supplier.userId).length,
       totalRevenue: quotations
         .filter(q => q.userId === supplier.userId && q.status === 'approved')
-        .reduce((sum, q) => sum + (q.totalAmount || 0), 0)
+        .reduce((sum, q) => sum + (q.totalAmount || 0), 0),
+      username: supplier.username
     };
     setSelectedSupplier(extendedSupplier as ExtendedSupplierEntry);
     setShowSupplierDetails(true);
@@ -255,48 +278,54 @@ const Admin: React.FC = () => {
   };
 
   const getStatusColor = (status: string): string => {
-    switch(status) {
-      case 'active': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
-      case 'blocked': return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800';
-      case 'pending': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800';
-      default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700';
-    }
+    // All badges are white with black border and black text
+    return 'bg-white text-black border border-black';
+  };
+
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
+    <div className="min-h-screen bg-white flex">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 flex flex-col fixed h-full z-30 shadow-sm`}>
-        <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-slate-800">
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-black transition-all duration-300 flex flex-col fixed h-full z-30`}>
+        <div className="h-16 flex items-center px-4 border-b border-black">
           <div className={`flex items-center ${sidebarOpen ? 'space-x-2' : 'justify-center w-full'}`}>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center shadow-md">
+            <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center">
               <span className="text-white font-bold text-sm">A</span>
             </div>
-            {sidebarOpen && <span className="font-semibold text-slate-900 dark:text-white">Admin Panel</span>}
+            {sidebarOpen && <span className="font-semibold text-black">Admin Panel</span>}
           </div>
         </div>
         
         <nav className="flex-1 p-2 overflow-y-auto">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
+            const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1 ${
-                  activeTab === item.id 
-                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400' 
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'
+                  isActive 
+                    ? 'bg-black text-white' 
+                    : 'text-black hover:bg-gray-100'
                 }`}
               >
                 <Icon className={`w-4 h-4 flex-shrink-0 ${
-                  activeTab === item.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-500'
+                  isActive ? 'text-white' : 'text-black'
                 }`} />
                 {sidebarOpen && (
                   <>
                     <span className="flex-1 text-left">{item.label}</span>
                     {item.id === 'messages' && unreadMessages > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-medium min-w-[18px] text-center">
+                      <span className="px-1.5 py-0.5 rounded-full bg-black text-white text-[10px] font-medium min-w-[18px] text-center">
                         {unreadMessages}
                       </span>
                     )}
@@ -307,10 +336,10 @@ const Admin: React.FC = () => {
           })}
         </nav>
         
-        <div className="p-2 border-t border-slate-200 dark:border-slate-800">
+        <div className="p-2 border-t border-black">
           <button
             onClick={() => setShowLogoutDialog(true)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-950/30 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-black hover:bg-gray-100 transition-colors"
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
             {sidebarOpen && "Sign Out"}
@@ -320,43 +349,43 @@ const Admin: React.FC = () => {
         {/* Sidebar Toggle */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
+          className="absolute -right-3 top-20 w-6 h-6 bg-white border border-black rounded-full flex items-center justify-center hover:bg-gray-100"
         >
-          <ChevronRightIcon className={`w-4 h-4 text-slate-600 dark:text-slate-400 transition-transform ${!sidebarOpen && 'rotate-180'}`} />
+          <ChevronRightIcon className={`w-4 h-4 text-black transition-transform ${!sidebarOpen && 'rotate-180'}`} />
         </button>
       </aside>
 
       {/* Main Content */}
       <main className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300`}>
         {/* Header */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between shadow-sm">
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-white capitalize">
+        <header className="h-16 bg-white border-b border-black sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between">
+          <h1 className="text-lg font-semibold text-black capitalize">
             {activeTab}
           </h1>
           
           <div className="flex items-center gap-4">
             {/* Search Bar */}
             <div className="hidden md:block relative">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-black opacity-50" />
               <Input
                 type="text"
                 placeholder="Search..."
                 value={searchTerm}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                className="w-64 pl-9 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-500"
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64 pl-9 bg-white border border-black text-black placeholder:text-black/50 focus-visible:ring-0 focus-visible:border-black"
               />
             </div>
 
             {/* Admin Profile */}
-            <div className="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-800">
-              <Avatar className="h-9 w-9 ring-2 ring-indigo-100 dark:ring-indigo-950">
-                <AvatarFallback className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white font-medium">
+            <div className="flex items-center gap-3 pl-3 border-l border-black">
+              <Avatar className="h-9 w-9 border border-black">
+                <AvatarFallback className="bg-black text-white font-medium">
                   A
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:block">
-                <p className="text-sm font-medium text-slate-900 dark:text-white">Admin</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Administrator</p>
+                <p className="text-sm font-medium text-black">Admin</p>
+                <p className="text-xs text-black/70">Administrator</p>
               </div>
             </div>
           </div>
@@ -369,75 +398,75 @@ const Admin: React.FC = () => {
             <div className="space-y-6">
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="border-slate-200 dark:border-slate-800 shadow-sm hover:shadow transition-shadow">
+                <Card className="border border-black">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Buyers</p>
-                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalBuyers}</p>
+                        <p className="text-sm text-black/70 mb-1">Total Buyers</p>
+                        <p className="text-3xl font-bold text-black">{stats.totalBuyers}</p>
                       </div>
-                      <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center">
-                        <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                      <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center bg-white">
+                        <Users className="w-6 h-6 text-black" />
                       </div>
                     </div>
                     {stats.blockedBuyers > 0 && (
-                      <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">
-                        <span className="font-medium">{stats.blockedBuyers}</span> blocked
+                      <p className="text-xs text-black/60 mt-2">
+                        <span className="font-medium text-black">{stats.blockedBuyers}</span> blocked
                       </p>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card className="border-slate-200 dark:border-slate-800 shadow-sm hover:shadow transition-shadow">
+                <Card className="border border-black">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Suppliers</p>
-                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalSuppliers}</p>
+                        <p className="text-sm text-black/70 mb-1">Total Suppliers</p>
+                        <p className="text-3xl font-bold text-black">{stats.totalSuppliers}</p>
                       </div>
-                      <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center">
-                        <Building2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                      <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center bg-white">
+                        <Building2 className="w-6 h-6 text-black" />
                       </div>
                     </div>
                     {stats.blockedSuppliers > 0 && (
-                      <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">
-                        <span className="font-medium">{stats.blockedSuppliers}</span> blocked
+                      <p className="text-xs text-black/60 mt-2">
+                        <span className="font-medium text-black">{stats.blockedSuppliers}</span> blocked
                       </p>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card className="border-slate-200 dark:border-slate-800 shadow-sm hover:shadow transition-shadow">
+                <Card className="border border-black">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Products</p>
-                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalProducts}</p>
+                        <p className="text-sm text-black/70 mb-1">Total Products</p>
+                        <p className="text-3xl font-bold text-black">{stats.totalProducts}</p>
                       </div>
-                      <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center">
-                        <Package className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                      <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center bg-white">
+                        <Package className="w-6 h-6 text-black" />
                       </div>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                      <span className="font-medium text-slate-700 dark:text-slate-300">{hiddenProducts.length}</span> hidden
+                    <p className="text-xs text-black/60 mt-2">
+                      <span className="font-medium text-black">{hiddenProducts.length}</span> hidden
                     </p>
                   </CardContent>
                 </Card>
 
-                <Card className="border-slate-200 dark:border-slate-800 shadow-sm hover:shadow transition-shadow">
+                <Card className="border border-black">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Messages</p>
-                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalMessages}</p>
+                        <p className="text-sm text-black/70 mb-1">Messages</p>
+                        <p className="text-3xl font-bold text-black">{stats.totalMessages}</p>
                       </div>
-                      <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
-                        <MessageSquare className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+                      <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center bg-white">
+                        <MessageSquare className="w-6 h-6 text-black" />
                       </div>
                     </div>
                     {stats.unreadMessages > 0 && (
-                      <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">
-                        <span className="font-medium">{stats.unreadMessages}</span> unread
+                      <p className="text-xs text-black/60 mt-2">
+                        <span className="font-medium text-black">{stats.unreadMessages}</span> unread
                       </p>
                     )}
                   </CardContent>
@@ -446,33 +475,36 @@ const Admin: React.FC = () => {
 
               {/* Recent Activity */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-slate-900 dark:text-white flex items-center justify-between">
+                <Card className="border border-black">
+                  <CardHeader className="pb-2 border-b border-black">
+                    <CardTitle className="text-base text-black flex items-center justify-between">
                       Recent Buyers
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-950/50"
+                        className="text-black border border-transparent hover:border-black"
                         onClick={() => setActiveTab('buyers')}
                       >
                         View all <ChevronRightIcon className="w-4 h-4 ml-1" />
                       </Button>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-4">
                     <div className="space-y-3">
                       {buyers.slice(0, 5).map((buyer: BuyerEntry) => (
-                        <div key={buyer?.id || Math.random()} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                        <div key={buyer?.id || Math.random()} className="flex items-center justify-between py-2 border-b border-black/10 last:border-0">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400 text-xs">
-                                {buyer?.name?.charAt(0).toUpperCase() || '?'}
+                            <Avatar className="h-8 w-8 border border-black">
+                              <AvatarFallback className="bg-black text-white text-xs">
+                                {buyer?.name ? buyer.name.charAt(0).toUpperCase() : '?'}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">{buyer?.name || 'Unknown'}</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">{buyer?.country || 'N/A'} • {buyer?.company || 'No company'}</p>
+                              <p className="text-sm font-medium text-black">{buyer?.name || 'Unknown'}</p>
+                              <p className="text-xs text-black/60">{buyer?.country || 'N/A'} • {buyer?.company || 'No company'}</p>
+                              {buyer?.username && (
+                                <p className="text-[10px] text-black/50">@{buyer.username}</p>
+                              )}
                             </div>
                           </div>
                           <Badge variant="outline" className={getStatusColor(buyer?.blocked ? 'blocked' : 'active')}>
@@ -481,39 +513,42 @@ const Admin: React.FC = () => {
                         </div>
                       ))}
                       {buyers.length === 0 && (
-                        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No buyers yet</p>
+                        <p className="text-sm text-black/60 text-center py-4">No buyers yet</p>
                       )}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-slate-900 dark:text-white flex items-center justify-between">
+                <Card className="border border-black">
+                  <CardHeader className="pb-2 border-b border-black">
+                    <CardTitle className="text-base text-black flex items-center justify-between">
                       Recent Suppliers
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-950/50"
+                        className="text-black border border-transparent hover:border-black"
                         onClick={() => setActiveTab('suppliers')}
                       >
                         View all <ChevronRightIcon className="w-4 h-4 ml-1" />
                       </Button>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-4">
                     <div className="space-y-3">
                       {suppliers.slice(0, 5).map((supplier: SupplierEntry) => (
-                        <div key={supplier?.id || Math.random()} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                        <div key={supplier?.id || Math.random()} className="flex items-center justify-between py-2 border-b border-black/10 last:border-0">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 text-xs">
-                                {supplier?.name?.charAt(0).toUpperCase() || '?'}
+                            <Avatar className="h-8 w-8 border border-black">
+                              <AvatarFallback className="bg-black text-white text-xs">
+                                {supplier?.name ? supplier.name.charAt(0).toUpperCase() : '?'}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">{supplier?.company || 'Unknown'}</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">{supplier?.country || 'N/A'} • {supplier?.name}</p>
+                              <p className="text-sm font-medium text-black">{supplier?.company || 'Unknown'}</p>
+                              <p className="text-xs text-black/60">{supplier?.country || 'N/A'} • {supplier?.name}</p>
+                              {supplier?.username && (
+                                <p className="text-[10px] text-black/50">@{supplier.username}</p>
+                              )}
                             </div>
                           </div>
                           <Badge variant="outline" className={getStatusColor(supplier?.blocked ? 'blocked' : 'active')}>
@@ -522,7 +557,7 @@ const Admin: React.FC = () => {
                         </div>
                       ))}
                       {suppliers.length === 0 && (
-                        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No suppliers yet</p>
+                        <p className="text-sm text-black/60 text-center py-4">No suppliers yet</p>
                       )}
                     </div>
                   </CardContent>
@@ -530,18 +565,67 @@ const Admin: React.FC = () => {
               </div>
 
               {/* Revenue Card */}
-              <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/20 dark:to-slate-900">
+              <Card className="border border-black bg-gray-50">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-indigo-600 dark:text-indigo-400 font-medium mb-1">Total Revenue</p>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">${stats.totalRevenue.toLocaleString()}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">From approved quotations</p>
+                      <p className="text-sm text-black font-medium mb-1">Total Revenue</p>
+                      <p className="text-3xl font-bold text-black">${stats.totalRevenue.toLocaleString()}</p>
+                      <p className="text-xs text-black/60 mt-1">From approved quotations</p>
                     </div>
-                    <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center">
-                      <DollarSign className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                    <div className="w-16 h-16 rounded-full border border-black flex items-center justify-center bg-white">
+                      <DollarSign className="w-8 h-8 text-black" />
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Quotations */}
+              <Card className="border border-black">
+                <CardHeader className="pb-2 border-b border-black">
+                  <CardTitle className="text-base text-black flex items-center justify-between">
+                    Recent Quotations
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-black border border-transparent hover:border-black"
+                      onClick={() => setActiveTab('quotations')}
+                    >
+                      View all <ChevronRightIcon className="w-4 h-4 ml-1" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  {quotations.slice(0, 5).length === 0 ? (
+                    <p className="text-sm text-black/60 text-center py-4">No quotations yet</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {quotations.slice(0, 5).map((q) => {
+                        const buyer = buyers.find(b => b.userId === q.userId);
+                        return (
+                          <div key={q.id} className="flex items-center justify-between py-2 border-b border-black/10 last:border-0">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8 border border-black">
+                                <AvatarFallback className="bg-black text-white text-xs">
+                                  {q.name?.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm font-medium text-black">{q.name}</p>
+                                <p className="text-xs text-black/60">
+                                  {q.products.length} products • {q.date}
+                                  {buyer?.username && <span className="ml-1 text-black/50">(@{buyer.username})</span>}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={getStatusColor(q.status)}>
+                              {q.status}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -549,19 +633,19 @@ const Admin: React.FC = () => {
 
           {/* Buyers */}
           {activeTab === "buyers" && (
-            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
-              <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
+            <Card className="border border-black">
+              <CardHeader className="pb-3 border-b border-black">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <CardTitle className="text-xl text-slate-900 dark:text-white">Buyer Management</CardTitle>
-                    <CardDescription className="text-slate-500 dark:text-slate-400">
+                    <CardTitle className="text-xl text-black">Buyer Management</CardTitle>
+                    <CardDescription className="text-black/70">
                       Manage and monitor all buyer accounts
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-3">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[140px] bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800">
-                        <Filter className="w-4 h-4 mr-2 text-slate-500" />
+                      <SelectTrigger className="w-[140px] bg-white border border-black">
+                        <Filter className="w-4 h-4 mr-2 text-black" />
                         <SelectValue placeholder="Filter" />
                       </SelectTrigger>
                       <SelectContent>
@@ -576,62 +660,66 @@ const Admin: React.FC = () => {
               <CardContent className="p-0">
                 {filteredBuyers.length === 0 ? (
                   <div className="text-center py-12">
-                    <Users className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                    <p className="text-slate-500 dark:text-slate-400">No buyers found</p>
+                    <Users className="w-12 h-12 text-black/20 mx-auto mb-4" />
+                    <p className="text-black/60">No buyers found</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-slate-50 dark:bg-slate-900">
+                      <thead className="border-b border-black bg-gray-100">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Buyer</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Contact</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Company</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Country</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Activity</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Actions</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Buyer</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Username</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Contact</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Company</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider hidden md:table-cell">Country</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Activity</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                      <tbody className="divide-y divide-black/10">
                         {filteredBuyers.map((buyer) => (
-                          <tr key={buyer?.id || Math.random()} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                          <tr key={buyer?.id || Math.random()} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400 text-xs">
+                                <Avatar className="h-8 w-8 border border-black">
+                                  <AvatarFallback className="bg-black text-white text-xs">
                                     {buyer.name?.charAt(0).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-medium text-slate-900 dark:text-white">{buyer.name}</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">ID: {buyer.id?.slice(-8)}</p>
+                                  <p className="font-medium text-black">{buyer.name}</p>
+                                  <p className="text-xs text-black/50">ID: {buyer.id?.slice(-8)}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="px-4 py-3">
+                              <p className="text-sm text-black">{buyer.username || '—'}</p>
+                            </td>
+                            <td className="px-4 py-3">
                               <div className="space-y-1">
-                                <p className="text-sm text-slate-900 dark:text-white">{buyer.email}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">{buyer.phone}</p>
+                                <p className="text-sm text-black">{buyer.email}</p>
+                                <p className="text-xs text-black/60">{buyer.phone}</p>
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">{buyer.company || 'N/A'}</p>
+                              <p className="text-sm font-medium text-black">{buyer.company || 'N/A'}</p>
                             </td>
                             <td className="px-4 py-3 hidden md:table-cell">
-                              <Badge variant="outline" className="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                              <Badge variant="outline" className="bg-white text-black border border-black">
                                 {buyer.country}
                               </Badge>
                             </td>
                             <td className="px-4 py-3">
                               <div className="space-y-1">
-                                <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                                <div className="flex items-center gap-1 text-xs text-black">
                                   <FileText className="w-3 h-3" />
-                                  <span>{(buyer as any).quotationsCount || 0} quotes</span>
+                                  <span>{buyer.quotationsCount} quotes</span>
                                 </div>
-                                <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                                <div className="flex items-center gap-1 text-xs text-black">
                                   <DollarSign className="w-3 h-3" />
-                                  <span>${(buyer as any).totalSpent?.toLocaleString() || 0}</span>
+                                  <span>${buyer.totalSpent?.toLocaleString() || 0}</span>
                                 </div>
                               </div>
                             </td>
@@ -645,7 +733,7 @@ const Admin: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/50"
+                                  className="h-8 w-8 p-0 text-black border border-transparent hover:border-black"
                                   onClick={() => handleViewBuyer(buyer)}
                                   title="View Details"
                                 >
@@ -655,11 +743,7 @@ const Admin: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className={`h-8 w-8 p-0 ${
-                                    buyer?.blocked 
-                                      ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/50' 
-                                      : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50'
-                                  }`}
+                                  className="h-8 w-8 p-0 text-black border border-transparent hover:border-black"
                                   onClick={() => {
                                     store.toggleBlockBuyer(buyer.id, buyer.userId);
                                     toast({ 
@@ -674,7 +758,7 @@ const Admin: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50"
+                                  className="h-8 w-8 p-0 text-black border border-transparent hover:border-black"
                                   onClick={() => handleDeleteBuyer(buyer)}
                                   title="Delete"
                                 >
@@ -694,19 +778,19 @@ const Admin: React.FC = () => {
 
           {/* Suppliers */}
           {activeTab === "suppliers" && (
-            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
-              <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
+            <Card className="border border-black">
+              <CardHeader className="pb-3 border-b border-black">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <CardTitle className="text-xl text-slate-900 dark:text-white">Supplier Management</CardTitle>
-                    <CardDescription className="text-slate-500 dark:text-slate-400">
+                    <CardTitle className="text-xl text-black">Supplier Management</CardTitle>
+                    <CardDescription className="text-black/70">
                       Manage and monitor all supplier accounts
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-3">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[140px] bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800">
-                        <Filter className="w-4 h-4 mr-2 text-slate-500" />
+                      <SelectTrigger className="w-[140px] bg-white border border-black">
+                        <Filter className="w-4 h-4 mr-2 text-black" />
                         <SelectValue placeholder="Filter" />
                       </SelectTrigger>
                       <SelectContent>
@@ -721,59 +805,65 @@ const Admin: React.FC = () => {
               <CardContent className="p-0">
                 {filteredSuppliers.length === 0 ? (
                   <div className="text-center py-12">
-                    <Building2 className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                    <p className="text-slate-500 dark:text-slate-400">No suppliers found</p>
+                    <Building2 className="w-12 h-12 text-black/20 mx-auto mb-4" />
+                    <p className="text-black/60">No suppliers found</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-slate-50 dark:bg-slate-900">
+                      <thead className="border-b border-black bg-gray-100">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Supplier</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Company</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Contact</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Country</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Products</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Actions</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Supplier</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Username</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Company</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Contact</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider hidden md:table-cell">Country</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Products</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                      <tbody className="divide-y divide-black/10">
                         {filteredSuppliers.map((supplier) => (
-                          <tr key={supplier?.id || Math.random()} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                          <tr key={supplier?.id || Math.random()} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 text-xs">
+                                <Avatar className="h-8 w-8 border border-black">
+                                  <AvatarFallback className="bg-black text-white text-xs">
                                     {supplier.name?.charAt(0).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-medium text-slate-900 dark:text-white">{supplier.name}</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">{supplier.email}</p>
+                                  <p className="font-medium text-black">{supplier.name}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">{supplier.company || 'N/A'}</p>
+                              <p className="text-sm text-black">{supplier.username || '—'}</p>
                             </td>
                             <td className="px-4 py-3">
-                              <p className="text-sm text-slate-900 dark:text-white">{supplier.phone}</p>
+                              <p className="text-sm font-medium text-black">{supplier.company || 'N/A'}</p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="space-y-1">
+                                <p className="text-xs text-black">{supplier.email}</p>
+                                <p className="text-xs text-black/60">{supplier.phone}</p>
+                              </div>
                             </td>
                             <td className="px-4 py-3 hidden md:table-cell">
-                              <Badge variant="outline" className="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                              <Badge variant="outline" className="bg-white text-black border border-black">
                                 {supplier.country}
                               </Badge>
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1 max-w-[150px]">
                                 {supplier.exportProducts?.slice(0, 2).map((prod, idx) => (
-                                  <Badge key={idx} variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0 text-xs">
+                                  <Badge key={idx} variant="secondary" className="bg-white text-black border border-black text-xs">
                                     {prod.length > 10 ? prod.substring(0, 10) + '...' : prod}
                                   </Badge>
                                 ))}
                                 {supplier.exportProducts && supplier.exportProducts.length > 2 && (
-                                  <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0 text-xs">
+                                  <Badge variant="secondary" className="bg-white text-black border border-black text-xs">
                                     +{supplier.exportProducts.length - 2}
                                   </Badge>
                                 )}
@@ -789,7 +879,7 @@ const Admin: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/50"
+                                  className="h-8 w-8 p-0 text-black border border-transparent hover:border-black"
                                   onClick={() => handleViewSupplier(supplier)}
                                   title="View Details"
                                 >
@@ -799,11 +889,7 @@ const Admin: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className={`h-8 w-8 p-0 ${
-                                    supplier?.blocked 
-                                      ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/50' 
-                                      : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50'
-                                  }`}
+                                  className="h-8 w-8 p-0 text-black border border-transparent hover:border-black"
                                   onClick={() => {
                                     store.toggleBlockSupplier(supplier.id, supplier.userId);
                                     toast({ 
@@ -818,7 +904,7 @@ const Admin: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50"
+                                  className="h-8 w-8 p-0 text-black border border-transparent hover:border-black"
                                   onClick={() => handleDeleteSupplier(supplier)}
                                   title="Delete"
                                 >
@@ -838,10 +924,10 @@ const Admin: React.FC = () => {
 
           {/* Products */}
           {activeTab === "products" && (
-            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+            <Card className="border border-black">
               <CardHeader>
-                <CardTitle className="text-xl text-slate-900 dark:text-white">Product Management</CardTitle>
-                <CardDescription className="text-slate-500 dark:text-slate-400">
+                <CardTitle className="text-xl text-black">Product Management</CardTitle>
+                <CardDescription className="text-black/70">
                   Manage product visibility and featured status
                 </CardDescription>
               </CardHeader>
@@ -850,41 +936,37 @@ const Admin: React.FC = () => {
                   {categories && categories.map((cat) => {
                     const catProducts = allProducts ? allProducts.filter((p) => p.category === cat.id) : [];
                     return (
-                      <Card key={cat.id} className="border-slate-200 dark:border-slate-800 overflow-hidden">
-                        <div className="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+                      <Card key={cat.id} className="border border-black overflow-hidden">
+                        <div className="border-b border-black bg-gray-100 px-4 py-3">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-slate-900 dark:text-white">{cat.name}</h3>
-                            <Badge variant="outline" className="bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                            <h3 className="font-semibold text-black">{cat.name}</h3>
+                            <Badge variant="outline" className="bg-white text-black border border-black">
                               {catProducts.length}
                             </Badge>
                           </div>
                         </div>
-                        <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                        <div className="divide-y divide-black/10">
                           {catProducts.map((product) => {
                             const isHidden = hiddenProducts.includes(product.id);
                             return (
-                              <div key={product.id} className={`p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors ${isHidden ? 'opacity-60' : ''}`}>
+                              <div key={product.id} className={`p-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${isHidden ? 'opacity-50' : ''}`}>
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center">
+                                  <div className="w-10 h-10 border border-black rounded-lg overflow-hidden flex items-center justify-center bg-gray-100">
                                     {product.image ? (
                                       <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                                     ) : (
-                                      <Package className="w-5 h-5 text-slate-400" />
+                                      <Package className="w-5 h-5 text-black" />
                                     )}
                                   </div>
                                   <div>
-                                    <p className="font-medium text-slate-900 dark:text-white">{product.name}</p>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">{product.origin}</p>
+                                    <p className="font-medium text-black">{product.name}</p>
+                                    <p className="text-sm text-black/60">{product.origin}</p>
                                   </div>
                                 </div>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className={`h-8 ${
-                                    isHidden 
-                                      ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/50' 
-                                      : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/50'
-                                  }`}
+                                  className="h-8 text-black border border-transparent hover:border-black"
                                   onClick={() => store.toggleProductVisibility(product.id)}
                                 >
                                   {isHidden ? (
@@ -907,86 +989,81 @@ const Admin: React.FC = () => {
 
           {/* Quotations */}
           {activeTab === "quotations" && (
-            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+            <Card className="border border-black">
               <CardHeader>
-                <CardTitle className="text-xl text-slate-900 dark:text-white">Quotation Requests</CardTitle>
-                <CardDescription className="text-slate-500 dark:text-slate-400">
+                <CardTitle className="text-xl text-black">Quotation Requests</CardTitle>
+                <CardDescription className="text-black/70">
                   Review and manage buyer quotation requests
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {quotations.length === 0 ? (
                   <div className="text-center py-12">
-                    <FileText className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                    <p className="text-slate-500 dark:text-slate-400">No quotation requests yet</p>
+                    <FileText className="w-12 h-12 text-black/20 mx-auto mb-4" />
+                    <p className="text-black/60">No quotation requests yet</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {quotations.map((q) => {
                       const buyer = buyers.find(b => b.userId === q.userId);
                       return (
-                        <Card key={q.id} className="border-slate-200 dark:border-slate-800 overflow-hidden">
+                        <Card key={q.id} className="border border-black overflow-hidden">
                           <CardContent className="p-6">
                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                               <div className="flex items-start gap-3">
-                                <Avatar className="h-10 w-10">
-                                  <AvatarFallback className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400">
+                                <Avatar className="h-10 w-10 border border-black">
+                                  <AvatarFallback className="bg-black text-white">
                                     {q.name?.charAt(0).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-medium text-slate-900 dark:text-white">{q.name}</p>
-                                  <p className="text-sm text-slate-500 dark:text-slate-400">{q.email}</p>
+                                  <p className="font-medium text-black">{q.name}</p>
+                                  <p className="text-sm text-black/70">{q.email}</p>
                                   {buyer && (
-                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                                      Registered buyer
+                                    <p className="text-xs text-black/60 mt-1">
+                                      Registered buyer {buyer.username && <span>(@{buyer.username})</span>}
                                     </p>
                                   )}
                                 </div>
                               </div>
-                              <Badge className={
-                                q.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' :
-                                q.status === 'quoted' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
-                                q.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800' :
-                                'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800'
-                              } variant="outline">
+                              <Badge variant="outline" className="bg-white text-black border border-black">
                                 {q.status}
                               </Badge>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                               <div>
-                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Products Requested</p>
+                                <p className="text-xs font-medium text-black mb-2 uppercase tracking-wider">Products Requested</p>
                                 <div className="space-y-2">
                                   {q.products.map((p, idx) => (
-                                    <div key={idx} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
-                                      <p className="text-sm font-medium text-slate-900 dark:text-white">{p.name}</p>
-                                      <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                    <div key={idx} className="border border-black p-3 rounded-lg bg-gray-50">
+                                      <p className="text-sm font-medium text-black">{p.name}</p>
+                                      <div className="flex items-center gap-4 text-xs text-black mt-1">
                                         <span>Qty: {p.quantity}</span>
                                         {p.price && <span>Unit Price: ${p.price}</span>}
                                       </div>
                                       {p.note && (
-                                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 italic">"{p.note}"</p>
+                                        <p className="text-xs text-black/60 mt-1 italic">"{p.note}"</p>
                                       )}
                                     </div>
                                   ))}
                                 </div>
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Details</p>
-                                <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg space-y-2">
+                                <p className="text-xs font-medium text-black mb-2 uppercase tracking-wider">Details</p>
+                                <div className="border border-black p-3 rounded-lg bg-gray-50 space-y-2">
                                   <div className="flex items-center gap-2 text-sm">
-                                    <Globe className="w-4 h-4 text-slate-400" />
-                                    <span className="text-slate-700 dark:text-slate-300">{q.country}</span>
+                                    <Globe className="w-4 h-4 text-black" />
+                                    <span className="text-black">{q.country}</span>
                                   </div>
                                   <div className="flex items-center gap-2 text-sm">
-                                    <Calendar className="w-4 h-4 text-slate-400" />
-                                    <span className="text-slate-700 dark:text-slate-300">{q.date}</span>
+                                    <Calendar className="w-4 h-4 text-black" />
+                                    <span className="text-black">{q.date}</span>
                                   </div>
                                   {q.totalAmount && (
                                     <div className="flex items-center gap-2 text-sm">
-                                      <DollarSign className="w-4 h-4 text-slate-400" />
-                                      <span className="font-medium text-slate-900 dark:text-white">${q.totalAmount.toLocaleString()}</span>
+                                      <DollarSign className="w-4 h-4 text-black" />
+                                      <span className="font-medium text-black">${q.totalAmount.toLocaleString()}</span>
                                     </div>
                                   )}
                                 </div>
@@ -994,17 +1071,17 @@ const Admin: React.FC = () => {
                             </div>
 
                             {q.generalNote && (
-                              <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg mb-4">
-                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">General Note</p>
-                                <p className="text-sm text-slate-700 dark:text-slate-300">{q.generalNote}</p>
+                              <div className="border border-black p-3 rounded-lg bg-gray-50 mb-4">
+                                <p className="text-xs font-medium text-black mb-1">General Note</p>
+                                <p className="text-sm text-black">{q.generalNote}</p>
                               </div>
                             )}
 
-                            <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-black">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                                className="gap-2 border border-black text-black hover:bg-black hover:text-white"
                                 onClick={() => {
                                   store.updateQuotationStatus(q.id, 'approved');
                                   toast({ title: "Quotation approved" });
@@ -1016,7 +1093,7 @@ const Admin: React.FC = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/50"
+                                className="gap-2 border border-black text-black hover:bg-black hover:text-white"
                                 onClick={() => {
                                   store.updateQuotationStatus(q.id, 'quoted');
                                   toast({ title: "Quote sent" });
@@ -1028,7 +1105,7 @@ const Admin: React.FC = () => {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50"
+                                className="text-black border border-transparent hover:border-black"
                                 onClick={() => {
                                   if (window.confirm('Delete this quotation?')) {
                                     store.deleteQuotation(q.id);
@@ -1051,47 +1128,47 @@ const Admin: React.FC = () => {
 
           {/* Messages */}
           {activeTab === "messages" && (
-            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+            <Card className="border border-black">
               <CardHeader>
-                <CardTitle className="text-xl text-slate-900 dark:text-white">Contact Messages</CardTitle>
-                <CardDescription className="text-slate-500 dark:text-slate-400">
+                <CardTitle className="text-xl text-black">Contact Messages</CardTitle>
+                <CardDescription className="text-black/70">
                   Manage customer inquiries and messages
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {contactMessages.length === 0 ? (
                   <div className="text-center py-12">
-                    <MessageSquare className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                    <p className="text-slate-500 dark:text-slate-400">No messages yet</p>
+                    <MessageSquare className="w-12 h-12 text-black/20 mx-auto mb-4" />
+                    <p className="text-black/60">No messages yet</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {contactMessages.map((msg) => (
                       <Card
                         key={msg.id}
-                        className={`border-slate-200 dark:border-slate-800 overflow-hidden ${
-                          !msg.read ? 'border-l-4 border-l-amber-500' : ''
+                        className={`border border-black overflow-hidden ${
+                          !msg.read ? 'border-l-4 border-l-black' : ''
                         }`}
                       >
                         <CardContent className="p-6">
                           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                             <div className="flex items-start gap-3">
-                              <Avatar className="h-10 w-10">
-                                <AvatarFallback className="bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                              <Avatar className="h-10 w-10 border border-black">
+                                <AvatarFallback className="bg-black text-white">
                                   {msg.name?.charAt(0).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <p className="font-medium text-slate-900 dark:text-white">{msg.name}</p>
+                                  <p className="font-medium text-black">{msg.name}</p>
                                   {!msg.read && (
-                                    <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 border-0 text-xs">
+                                    <Badge variant="secondary" className="bg-white text-black border border-black text-xs">
                                       New
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">{msg.email}</p>
-                                <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                <p className="text-sm text-black/70">{msg.email}</p>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-black/60">
                                   <span>{msg.country}</span>
                                   <span>•</span>
                                   <span>{msg.date}</span>
@@ -1108,7 +1185,7 @@ const Admin: React.FC = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
+                                className="gap-2 border border-black text-black hover:bg-black hover:text-white"
                                 onClick={() => {
                                   window.location.href = `mailto:${msg.email}?subject=Re: ${msg.subject}`;
                                   if (!msg.replied) {
@@ -1123,7 +1200,7 @@ const Admin: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/50"
+                                  className="text-black border border-transparent hover:border-black"
                                   onClick={() => {
                                     store.markMessageRead(msg.id);
                                     toast({ title: "Message marked as read" });
@@ -1135,7 +1212,7 @@ const Admin: React.FC = () => {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/50"
+                                className="text-black border border-transparent hover:border-black"
                                 onClick={() => {
                                   if (window.confirm('Delete this message?')) {
                                     store.deleteMessage(msg.id);
@@ -1148,13 +1225,13 @@ const Admin: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
-                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Subject: {msg.subject}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{msg.message}</p>
+                          <div className="border border-black p-4 rounded-lg bg-gray-50">
+                            <p className="text-sm font-medium text-black mb-2">Subject: {msg.subject}</p>
+                            <p className="text-sm text-black whitespace-pre-wrap leading-relaxed">{msg.message}</p>
                           </div>
 
                           {msg.replied && (
-                            <div className="mt-3 flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
+                            <div className="mt-3 flex items-center gap-2 text-xs text-black">
                               <CheckCircle2 className="w-3 h-3" />
                               <span>Replied</span>
                             </div>
@@ -1170,20 +1247,20 @@ const Admin: React.FC = () => {
 
           {/* Settings */}
           {activeTab === "settings" && (
-            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+            <Card className="border border-black">
               <CardContent className="p-8 text-center">
-                <Settings className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Platform Settings</h3>
-                <p className="text-slate-500 dark:text-slate-400 mt-2">Configure seasonal products, bank details, and platform settings.</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Backend integration required for full functionality.</p>
+                <Settings className="w-12 h-12 text-black/20 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-black">Platform Settings</h3>
+                <p className="text-black/70 mt-2">Configure seasonal products, bank details, and platform settings.</p>
+                <p className="text-xs text-black/50 mt-1">Backend integration required for full functionality.</p>
                 
                 {/* Debug section - remove in production */}
-                <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
-                  <h4 className="text-sm font-semibold text-rose-600 dark:text-rose-400 mb-4">Debug Tools</h4>
+                <div className="mt-8 pt-6 border-t border-black">
+                  <h4 className="text-sm font-semibold text-black mb-4">Debug Tools</h4>
                   <Button
                     variant="destructive"
                     size="sm"
-                    className="bg-rose-600 hover:bg-rose-700 text-white"
+                    className="bg-black text-white hover:bg-black/80"
                     onClick={() => {
                       if (window.confirm('This will clear ALL buyer and supplier data. Are you sure?')) {
                         store.clearAllData();
@@ -1204,97 +1281,107 @@ const Admin: React.FC = () => {
       <Dialog open={showBuyerDetails} onOpenChange={setShowBuyerDetails}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-              <Users className="w-6 h-6 text-indigo-600" />
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-black">
+              <Users className="w-6 h-6 text-black" />
               Buyer Details
             </DialogTitle>
           </DialogHeader>
           
           {selectedBuyer && (
             <Tabs defaultValue="overview" className="mt-4">
-              <TabsList className="grid w-full grid-cols-4 bg-slate-100 dark:bg-slate-900 p-1">
-                <TabsTrigger value="overview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-indigo-400">Overview</TabsTrigger>
-                <TabsTrigger value="personal" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-indigo-400">Personal Info</TabsTrigger>
-                <TabsTrigger value="business" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-indigo-400">Business</TabsTrigger>
-                <TabsTrigger value="quotations" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-indigo-400">
+              <TabsList className="grid w-full grid-cols-4 border border-black bg-white p-1">
+                <TabsTrigger value="overview" className="data-[state=active]:bg-black data-[state=active]:text-white">Overview</TabsTrigger>
+                <TabsTrigger value="personal" className="data-[state=active]:bg-black data-[state=active]:text-white">Personal Info</TabsTrigger>
+                <TabsTrigger value="business" className="data-[state=active]:bg-black data-[state=active]:text-white">Business</TabsTrigger>
+                <TabsTrigger value="quotations" className="data-[state=active]:bg-black data-[state=active]:text-white">
                   Quotations ({buyerQuotations.length})
                 </TabsTrigger>
               </TabsList>
               
               <TabsContent value="overview" className="space-y-4 mt-4">
-                <Card className="border-slate-200 dark:border-slate-800">
+                <Card className="border border-black">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-slate-900 dark:text-white">Activity Overview</CardTitle>
+                    <CardTitle className="text-base text-black">Activity Overview</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div className="bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-lg">
-                        <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">Total Spent</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                      <div className="border border-black p-4 rounded-lg bg-gray-50">
+                        <p className="text-xs text-black/70 mb-1">Total Spent</p>
+                        <p className="text-xl font-bold text-black">
                           ${selectedBuyer.totalSpent?.toLocaleString() || '0'}
                         </p>
                       </div>
-                      <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-lg">
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">Quotations</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                      <div className="border border-black p-4 rounded-lg bg-gray-50">
+                        <p className="text-xs text-black/70 mb-1">Quotations</p>
+                        <p className="text-xl font-bold text-black">
                           {selectedBuyer.quotationsCount || 0}
                         </p>
                       </div>
-                      <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-lg">
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Avg. Order</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                      <div className="border border-black p-4 rounded-lg bg-gray-50">
+                        <p className="text-xs text-black/70 mb-1">Avg. Order</p>
+                        <p className="text-xl font-bold text-black">
                           ${selectedBuyer.averageOrderValue?.toLocaleString() || '0'}
                         </p>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4 text-sm border-t border-slate-200 dark:border-slate-800 pt-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm border-t border-black pt-4">
                       <div>
-                        <p className="text-slate-500 dark:text-slate-400">Last Active</p>
-                        <p className="font-medium text-slate-900 dark:text-white">{selectedBuyer.lastActive || 'N/A'}</p>
+                        <p className="text-black/70">Last Active</p>
+                        <p className="font-medium text-black">{selectedBuyer.lastActive || 'N/A'}</p>
                       </div>
                       <div>
-                        <p className="text-slate-500 dark:text-slate-400">Registered</p>
-                        <p className="font-medium text-slate-900 dark:text-white">{selectedBuyer.date}</p>
+                        <p className="text-black/70">Registered</p>
+                        <p className="font-medium text-black">{selectedBuyer.date}</p>
                       </div>
                     </div>
+                    {selectedBuyer.username && (
+                      <div className="mt-2 text-sm">
+                        <p className="text-black/70">Username</p>
+                        <p className="font-medium text-black">@{selectedBuyer.username}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
               
               <TabsContent value="personal" className="space-y-4 mt-4">
-                <Card className="border-slate-200 dark:border-slate-800">
+                <Card className="border border-black">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
-                      <User className="w-4 h-4 text-indigo-600" />
+                    <CardTitle className="text-base flex items-center gap-2 text-black">
+                      <User className="w-4 h-4 text-black" />
                       Personal Information
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Full Name</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.name}</p>
+                        <p className="text-xs text-black/70">Full Name</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.name}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Email</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.email}</p>
+                        <p className="text-xs text-black/70">Username</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">@{selectedBuyer.username || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Phone</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.phone}</p>
+                        <p className="text-xs text-black/70">Email</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.email}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Country</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.country}</p>
+                        <p className="text-xs text-black/70">Phone</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.phone}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">City</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.city || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Country</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.country}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Port</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.port || 'N/A'}</p>
+                        <p className="text-xs text-black/70">City</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.city || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-black/70">Port</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.port || 'N/A'}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -1302,71 +1389,67 @@ const Admin: React.FC = () => {
               </TabsContent>
               
               <TabsContent value="business" className="space-y-4 mt-4">
-                <Card className="border-slate-200 dark:border-slate-800">
+                <Card className="border border-black">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
-                      <Building2 className="w-4 h-4 text-indigo-600" />
+                    <CardTitle className="text-base flex items-center gap-2 text-black">
+                      <Building2 className="w-4 h-4 text-black" />
                       Business Details
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Company</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.company || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Company</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.company || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Business Type</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.businessType || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Business Type</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.businessType || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Years in Business</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.yearsInBusiness || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Years in Business</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.yearsInBusiness || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Tax ID</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedBuyer.taxId || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Tax ID</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedBuyer.taxId || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Website</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">
+                        <p className="text-xs text-black/70">Website</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">
                           {selectedBuyer.website ? (
-                            <a href={selectedBuyer.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                            <a href={selectedBuyer.website} target="_blank" rel="noopener noreferrer" className="underline">
                               {selectedBuyer.website}
                             </a>
                           ) : 'N/A'}
                         </p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Annual Volume</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">
+                        <p className="text-xs text-black/70">Annual Volume</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">
                           {selectedBuyer.annualVolume ? `$${selectedBuyer.annualVolume}` : 'N/A'}
                         </p>
                       </div>
                     </div>
                     
                     <div className="mt-4">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Products of Interest</p>
+                      <p className="text-xs text-black/70 mb-2">Products of Interest</p>
                       <div className="flex flex-wrap gap-2">
                         {selectedBuyer.productsOfInterest ? (
                           selectedBuyer.productsOfInterest.split(', ').map((product, idx) => (
-                            <Badge key={idx} variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0">
+                            <Badge key={idx} variant="secondary" className="bg-white text-black border border-black">
                               {product}
                             </Badge>
                           ))
                         ) : (
-                          <p className="text-sm text-slate-500 dark:text-slate-400">No products specified</p>
+                          <p className="text-sm text-black/60">No products specified</p>
                         )}
                       </div>
                     </div>
                     
                     <div className="mt-4">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Newsletter</p>
-                      <Badge variant={selectedBuyer.newsletter ? "default" : "secondary"} className={
-                        selectedBuyer.newsletter 
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0' 
-                          : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-0'
-                      }>
+                      <p className="text-xs text-black/70 mb-2">Newsletter</p>
+                      <Badge variant="outline" className="bg-white text-black border border-black">
                         {selectedBuyer.newsletter ? 'Subscribed' : 'Not Subscribed'}
                       </Badge>
                     </div>
@@ -1376,42 +1459,37 @@ const Admin: React.FC = () => {
               
               <TabsContent value="quotations" className="space-y-4 mt-4">
                 {buyerQuotations.length === 0 ? (
-                  <Card className="border-slate-200 dark:border-slate-800">
+                  <Card className="border border-black">
                     <CardContent className="text-center py-8">
-                      <FileText className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                      <p className="text-slate-500 dark:text-slate-400">No quotations from this buyer yet</p>
+                      <FileText className="w-12 h-12 text-black/20 mx-auto mb-4" />
+                      <p className="text-black/60">No quotations from this buyer yet</p>
                     </CardContent>
                   </Card>
                 ) : (
                   buyerQuotations.map((q, idx) => (
-                    <Card key={q.id} className="border-slate-200 dark:border-slate-800">
+                    <Card key={q.id} className="border border-black">
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-base text-slate-900 dark:text-white">Quotation #{idx + 1}</CardTitle>
-                          <Badge className={
-                            q.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' :
-                            q.status === 'quoted' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
-                            q.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800' :
-                            'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800'
-                          } variant="outline">
+                          <CardTitle className="text-base text-black">Quotation #{idx + 1}</CardTitle>
+                          <Badge variant="outline" className="bg-white text-black border border-black">
                             {q.status}
                           </Badge>
                         </div>
-                        <CardDescription className="text-slate-500 dark:text-slate-400">Submitted on {q.date}</CardDescription>
+                        <CardDescription className="text-black/60">Submitted on {q.date}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-3">
                           {q.products.map((p, pid) => (
-                            <div key={pid} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
-                              <p className="font-medium text-sm text-slate-900 dark:text-white">{p.name}</p>
-                              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Quantity: {p.quantity}</p>
-                              {p.note && <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 italic">"{p.note}"</p>}
+                            <div key={pid} className="border border-black p-3 rounded-lg bg-gray-50">
+                              <p className="font-medium text-sm text-black">{p.name}</p>
+                              <p className="text-xs text-black/70 mt-1">Quantity: {p.quantity}</p>
+                              {p.note && <p className="text-xs text-black/60 mt-1 italic">"{p.note}"</p>}
                             </div>
                           ))}
                           {q.generalNote && (
-                            <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-                              <p className="text-xs font-medium text-slate-700 dark:text-slate-300">General Note</p>
-                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{q.generalNote}</p>
+                            <div className="mt-2 p-3 border border-black rounded-lg bg-gray-50">
+                              <p className="text-xs font-medium text-black">General Note</p>
+                              <p className="text-sm text-black mt-1">{q.generalNote}</p>
                             </div>
                           )}
                         </div>
@@ -1429,77 +1507,81 @@ const Admin: React.FC = () => {
       <Dialog open={showSupplierDetails} onOpenChange={setShowSupplierDetails}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-              <Building2 className="w-6 h-6 text-emerald-600" />
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-black">
+              <Building2 className="w-6 h-6 text-black" />
               Supplier Details
             </DialogTitle>
           </DialogHeader>
           
           {selectedSupplier && (
             <Tabs defaultValue="company" className="mt-4">
-              <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-900 p-1">
-                <TabsTrigger value="company" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400">Company Info</TabsTrigger>
-                <TabsTrigger value="products" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400">Products</TabsTrigger>
-                <TabsTrigger value="trade" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400">Trade Info</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 border border-black bg-white p-1">
+                <TabsTrigger value="company" className="data-[state=active]:bg-black data-[state=active]:text-white">Company Info</TabsTrigger>
+                <TabsTrigger value="products" className="data-[state=active]:bg-black data-[state=active]:text-white">Products</TabsTrigger>
+                <TabsTrigger value="trade" className="data-[state=active]:bg-black data-[state=active]:text-white">Trade Info</TabsTrigger>
               </TabsList>
               
               <TabsContent value="company" className="space-y-4 mt-4">
-                <Card className="border-slate-200 dark:border-slate-800">
+                <Card className="border border-black">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
-                      <Building2 className="w-4 h-4 text-emerald-600" />
+                    <CardTitle className="text-base flex items-center gap-2 text-black">
+                      <Building2 className="w-4 h-4 text-black" />
                       Company Details
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Company Name</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.company || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Company Name</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedSupplier.company || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Contact Person</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.name}</p>
+                        <p className="text-xs text-black/70">Contact Person</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedSupplier.name}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Email</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.email}</p>
+                        <p className="text-xs text-black/70">Username</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">@{selectedSupplier.username || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Phone</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.phone}</p>
+                        <p className="text-xs text-black/70">Email</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedSupplier.email}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Country</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.country}</p>
+                        <p className="text-xs text-black/70">Phone</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedSupplier.phone}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Port</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.port || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Country</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedSupplier.country}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Business Type</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.businessType || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Port</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedSupplier.port || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Year Established</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.yearEstablished || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Business Type</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedSupplier.businessType || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Employees</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">{selectedSupplier.employeeCount || 'N/A'}</p>
+                        <p className="text-xs text-black/70">Year Established</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedSupplier.yearEstablished || 'N/A'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Annual Revenue</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">
+                        <p className="text-xs text-black/70">Employees</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">{selectedSupplier.employeeCount || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-black/70">Annual Revenue</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50">
                           {selectedSupplier.currentRevenue ? `$${selectedSupplier.currentRevenue}` : 'N/A'}
                         </p>
                       </div>
                       <div className="space-y-1 md:col-span-2">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Website</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800 break-all">
+                        <p className="text-xs text-black/70">Website</p>
+                        <p className="text-sm font-medium text-black border border-black p-2 rounded bg-gray-50 break-all">
                           {selectedSupplier.website ? (
-                            <a href={selectedSupplier.website} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">
+                            <a href={selectedSupplier.website} target="_blank" rel="noopener noreferrer" className="underline">
                               {selectedSupplier.website}
                             </a>
                           ) : 'N/A'}
@@ -1508,15 +1590,11 @@ const Admin: React.FC = () => {
                     </div>
                     
                     <div className="mt-4 flex gap-2">
-                      <Badge variant={selectedSupplier.blocked ? "destructive" : "secondary"} className={
-                        selectedSupplier.blocked 
-                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-0' 
-                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0'
-                      }>
+                      <Badge variant="outline" className="bg-white text-black border border-black">
                         {selectedSupplier.blocked ? 'Blocked' : 'Active'}
                       </Badge>
                       {selectedSupplier.verified && (
-                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0">Verified</Badge>
+                        <Badge variant="outline" className="bg-white text-black border border-black">Verified</Badge>
                       )}
                     </div>
                   </CardContent>
@@ -1524,52 +1602,52 @@ const Admin: React.FC = () => {
               </TabsContent>
               
               <TabsContent value="products" className="space-y-4 mt-4">
-                <Card className="border-slate-200 dark:border-slate-800">
+                <Card className="border border-black">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
-                      <Package className="w-4 h-4 text-emerald-600" />
+                    <CardTitle className="text-base flex items-center gap-2 text-black">
+                      <Package className="w-4 h-4 text-black" />
                       Export Products
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {selectedSupplier.exportProducts?.map((product, idx) => (
-                        <div key={idx} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
-                          <p className="font-medium text-slate-900 dark:text-white">{product}</p>
+                        <div key={idx} className="border border-black p-3 rounded-lg bg-gray-50">
+                          <p className="font-medium text-black">{product}</p>
                         </div>
                       ))}
                     </div>
                     
                     {selectedSupplier.productDetails && (
                       <div className="mt-4">
-                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Product Details</p>
-                        <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                        <p className="text-xs font-medium text-black/70 mb-2">Product Details</p>
+                        <p className="text-sm text-black border border-black p-3 rounded-lg bg-gray-50">
                           {selectedSupplier.productDetails}
                         </p>
                       </div>
                     )}
                     
                     <div className="grid grid-cols-3 gap-4 mt-4">
-                      <div className="bg-indigo-50 dark:bg-indigo-950/30 p-3 rounded-lg">
-                        <p className="text-xs text-indigo-600 dark:text-indigo-400">Supply Capacity</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white mt-1">{selectedSupplier.capacity || 'N/A'}</p>
+                      <div className="border border-black p-3 rounded-lg bg-gray-50">
+                        <p className="text-xs text-black/70">Supply Capacity</p>
+                        <p className="text-sm font-medium text-black mt-1">{selectedSupplier.capacity || 'N/A'}</p>
                       </div>
-                      <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg">
-                        <p className="text-xs text-amber-600 dark:text-amber-400">Min Order</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white mt-1">{selectedSupplier.minOrderQuantity || 'N/A'}</p>
+                      <div className="border border-black p-3 rounded-lg bg-gray-50">
+                        <p className="text-xs text-black/70">Min Order</p>
+                        <p className="text-sm font-medium text-black mt-1">{selectedSupplier.minOrderQuantity || 'N/A'}</p>
                       </div>
-                      <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-lg">
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400">Lead Time</p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white mt-1">{selectedSupplier.leadTime || 'N/A'} days</p>
+                      <div className="border border-black p-3 rounded-lg bg-gray-50">
+                        <p className="text-xs text-black/70">Lead Time</p>
+                        <p className="text-sm font-medium text-black mt-1">{selectedSupplier.leadTime || 'N/A'} days</p>
                       </div>
                     </div>
                     
                     {selectedSupplier.certificates && selectedSupplier.certificates.length > 0 && (
                       <div className="mt-4">
-                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Certificates</p>
+                        <p className="text-xs font-medium text-black/70 mb-2">Certificates</p>
                         <div className="flex flex-wrap gap-2">
                           {selectedSupplier.certificates.map((cert, idx) => (
-                            <Badge key={idx} variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0">
+                            <Badge key={idx} variant="secondary" className="bg-white text-black border border-black">
                               {cert}
                             </Badge>
                           ))}
@@ -1581,64 +1659,64 @@ const Admin: React.FC = () => {
               </TabsContent>
               
               <TabsContent value="trade" className="space-y-4 mt-4">
-                <Card className="border-slate-200 dark:border-slate-800">
+                <Card className="border border-black">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 dark:text-white">
-                      <Globe className="w-4 h-4 text-emerald-600" />
+                    <CardTitle className="text-base flex items-center gap-2 text-black">
+                      <Globe className="w-4 h-4 text-black" />
                       Trade Information
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Export Markets</p>
+                      <p className="text-xs text-black/70 mb-2">Export Markets</p>
                       <div className="flex flex-wrap gap-2">
                         {selectedSupplier.exportMarkets && selectedSupplier.exportMarkets.length > 0 ? (
                           selectedSupplier.exportMarkets.map((market, idx) => (
-                            <Badge key={idx} variant="outline" className="bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                            <Badge key={idx} variant="outline" className="bg-white text-black border border-black">
                               {market}
                             </Badge>
                           ))
                         ) : (
-                          <p className="text-sm text-slate-500 dark:text-slate-400">No markets specified</p>
+                          <p className="text-sm text-black/60">No markets specified</p>
                         )}
                       </div>
                     </div>
                     
                     <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Payment Terms</p>
+                      <p className="text-xs text-black/70 mb-2">Payment Terms</p>
                       <div className="flex flex-wrap gap-2">
                         {selectedSupplier.preferredPaymentTerms && selectedSupplier.preferredPaymentTerms.length > 0 ? (
                           selectedSupplier.preferredPaymentTerms.map((term, idx) => (
-                            <Badge key={idx} variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0">
+                            <Badge key={idx} variant="secondary" className="bg-white text-black border border-black">
                               {term}
                             </Badge>
                           ))
                         ) : (
-                          <p className="text-sm text-slate-500 dark:text-slate-400">No payment terms specified</p>
+                          <p className="text-sm text-black/60">No payment terms specified</p>
                         )}
                       </div>
                     </div>
                     
                     {selectedSupplier.bankName && (
                       <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Banking Information</p>
-                        <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1">
-                          <p className="text-sm"><span className="text-slate-500 dark:text-slate-400">Bank:</span> <span className="text-slate-900 dark:text-white">{selectedSupplier.bankName}</span></p>
-                          <p className="text-sm"><span className="text-slate-500 dark:text-slate-400">Account:</span> <span className="text-slate-900 dark:text-white">{selectedSupplier.bankAccount}</span></p>
-                          <p className="text-sm"><span className="text-slate-500 dark:text-slate-400">SWIFT:</span> <span className="text-slate-900 dark:text-white">{selectedSupplier.swiftCode}</span></p>
+                        <p className="text-xs text-black/70 mb-2">Banking Information</p>
+                        <div className="border border-black p-3 rounded-lg bg-gray-50 space-y-1">
+                          <p className="text-sm"><span className="text-black/70">Bank:</span> <span className="text-black">{selectedSupplier.bankName}</span></p>
+                          <p className="text-sm"><span className="text-black/70">Account:</span> <span className="text-black">{selectedSupplier.bankAccount}</span></p>
+                          <p className="text-sm"><span className="text-black/70">SWIFT:</span> <span className="text-black">{selectedSupplier.swiftCode}</span></p>
                         </div>
                       </div>
                     )}
                     
-                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                    <div className="pt-4 border-t border-black">
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-indigo-50 dark:bg-indigo-950/30 p-3 rounded-lg">
-                          <p className="text-xs text-indigo-600 dark:text-indigo-400">Total Orders</p>
-                          <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedSupplier.totalOrders || 0}</p>
+                        <div className="border border-black p-3 rounded-lg bg-gray-50">
+                          <p className="text-xs text-black/70">Total Orders</p>
+                          <p className="text-lg font-bold text-black">{selectedSupplier.totalOrders || 0}</p>
                         </div>
-                        <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-lg">
-                          <p className="text-xs text-emerald-600 dark:text-emerald-400">Total Revenue</p>
-                          <p className="text-lg font-bold text-slate-900 dark:text-white">${selectedSupplier.totalRevenue?.toLocaleString() || '0'}</p>
+                        <div className="border border-black p-3 rounded-lg bg-gray-50">
+                          <p className="text-xs text-black/70">Total Revenue</p>
+                          <p className="text-lg font-bold text-black">${selectedSupplier.totalRevenue?.toLocaleString() || '0'}</p>
                         </div>
                       </div>
                     </div>
@@ -1654,18 +1732,18 @@ const Admin: React.FC = () => {
       <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-xl text-slate-900 dark:text-white">Confirm Logout</DialogTitle>
+            <DialogTitle className="text-xl text-black">Confirm Logout</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Re-enter your credentials to confirm logout.</p>
+            <p className="text-sm text-black/70">Re-enter your credentials to confirm logout.</p>
             
             <Input
               placeholder="Admin Email"
               type="email"
               value={logoutEmail}
               onChange={(e) => setLogoutEmail(e.target.value)}
-              className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-500"
+              className="bg-white border border-black text-black placeholder:text-black/50"
             />
             
             <Input
@@ -1673,14 +1751,14 @@ const Admin: React.FC = () => {
               type="password"
               value={logoutPassword}
               onChange={(e) => setLogoutPassword(e.target.value)}
-              className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-500"
+              className="bg-white border border-black text-black placeholder:text-black/50"
             />
             
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowLogoutDialog(false)} className="flex-1 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <Button variant="outline" onClick={() => setShowLogoutDialog(false)} className="flex-1 border border-black text-black hover:bg-black hover:text-white">
                 Cancel
               </Button>
-              <Button onClick={handleLogout} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white">
+              <Button onClick={handleLogout} className="flex-1 bg-black text-white hover:bg-black/80">
                 Logout
               </Button>
             </div>

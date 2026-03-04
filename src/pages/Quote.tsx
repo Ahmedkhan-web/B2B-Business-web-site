@@ -205,7 +205,7 @@ const CartPage = () => {
                           
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pt-2">
                             <p className="text-[8px] sm:text-[10px] text-muted-foreground/60 italic font-medium">
-                              * These notes will be attached to your formal LC application.
+                              * These notes will be attached to your formal LC Quotations.
                             </p>
                             <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
                               <div className="flex items-center gap-1 bg-muted/20 border border-white/10 rounded-xl p-1 shadow-inner">

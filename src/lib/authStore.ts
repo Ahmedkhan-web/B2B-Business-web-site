@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type UserRole = 'buyer' | 'supplier' | 'admin';
 
@@ -28,6 +28,9 @@ interface AuthStore {
   deleteUser: (id: string) => void;
   isEmailAvailable: (email: string, role: UserRole) => boolean;
   isUsernameAvailable: (username: string) => boolean;
+  forceSync: () => void;
+  cleanupOrphanedUsers: () => void;
+  getAllUsers: () => User[]; // New function
 }
 
 let counter = 0;
@@ -57,6 +60,7 @@ const useAuthStore = create<AuthStore>()(
       login: (email: string, password: string, role?: UserRole) => {
         const state = get();
         
+        // Admin login
         if (email === 'admindf@gmail.com' && password === 'admin123') {
           const adminUser = state.users.find(u => u.email === email);
           if (adminUser) {
@@ -65,6 +69,7 @@ const useAuthStore = create<AuthStore>()(
           }
         }
         
+        // Regular user login
         const foundUser = state.users.find(u => 
           u.email === email && 
           (role ? u.role === role : true) &&
@@ -82,11 +87,15 @@ const useAuthStore = create<AuthStore>()(
       register: (userData) => {
         const state = get();
         
+        // Check username availability - strict check across all users
         if (state.users.some(u => u.username === userData.username)) {
+          console.log('[AuthStore] Username already taken:', userData.username);
           return false;
         }
         
+        // Check email availability for this role - strict check
         if (state.users.some(u => u.email === userData.email && u.role === userData.role)) {
+          console.log('[AuthStore] Email already registered for this role:', userData.email);
           return false;
         }
 
@@ -97,11 +106,23 @@ const useAuthStore = create<AuthStore>()(
           blocked: false,
         };
 
-        set((state) => ({
-          users: [...state.users, newUser],
-          user: newUser,
-          isLoggedIn: true,
-        }));
+        console.log('[AuthStore] Registering new user:', newUser);
+        
+        set((state) => {
+          const newUsers = [...state.users, newUser];
+          console.log('[AuthStore] Users after registration:', newUsers.length);
+          
+          return {
+            users: newUsers,
+            user: newUser,
+            isLoggedIn: true,
+          };
+        });
+
+        // Force storage sync
+        setTimeout(() => {
+          get().forceSync();
+        }, 100);
 
         return true;
       },
@@ -113,27 +134,101 @@ const useAuthStore = create<AuthStore>()(
       },
 
       deleteUser: (id) => {
-        console.log(`Deleting user with id: ${id} from auth store`);
-        set((state) => ({
-          users: state.users.filter(u => u.id !== id),
-          user: state.user?.id === id ? null : state.user,
-          isLoggedIn: state.user?.id === id ? false : state.isLoggedIn,
-        }));
+        console.log(`[AuthStore] Deleting user with id: ${id}`);
+        
+        set((state) => {
+          const newUsers = state.users.filter(u => u.id !== id);
+          const newUser = state.user?.id === id ? null : state.user;
+          const newIsLoggedIn = state.user?.id === id ? false : state.isLoggedIn;
+          
+          console.log(`[AuthStore] Users before: ${state.users.length}, after: ${newUsers.length}`);
+          
+          return {
+            users: newUsers,
+            user: newUser,
+            isLoggedIn: newIsLoggedIn,
+          };
+        });
+
+        // Force sync
+        setTimeout(() => {
+          get().forceSync();
+        }, 100);
       },
 
       isEmailAvailable: (email: string, role: UserRole) => {
         const state = get();
-        return !state.users.some(u => u.email === email && u.role === role);
+        // Check if email exists for the same role
+        const exists = state.users.some(u => u.email === email && u.role === role);
+        console.log(`[AuthStore] Checking email ${email} for role ${role}:`, exists ? 'NOT AVAILABLE' : 'AVAILABLE');
+        return !exists;
       },
 
       isUsernameAvailable: (username: string) => {
         const state = get();
-        return !state.users.some(u => u.username === username);
+        // Check if username exists across ALL users (usernames must be globally unique)
+        const exists = state.users.some(u => u.username === username);
+        console.log(`[AuthStore] Checking username ${username}:`, exists ? 'NOT AVAILABLE' : 'AVAILABLE');
+        return !exists;
+      },
+
+      forceSync: () => {
+        const state = get();
+        set({ ...state });
+        console.log('[AuthStore] Forced sync completed');
+      },
+
+      cleanupOrphanedUsers: () => {
+        console.log('[AuthStore] Running orphaned users cleanup');
+        const state = get();
+        const adminStore = localStorage.getItem('admin-storage');
+        
+        if (adminStore) {
+          try {
+            const adminData = JSON.parse(adminStore);
+            const adminBuyers = adminData.state?.buyers || [];
+            const adminSuppliers = adminData.state?.suppliers || [];
+            
+            // Get all valid user IDs from admin store
+            const validUserIds = [
+              ...adminBuyers.map((b: any) => b.userId),
+              ...adminSuppliers.map((s: any) => s.userId)
+            ];
+            
+            // Keep admin user and users that exist in admin store
+            const newUsers = state.users.filter(u => 
+              u.role === 'admin' || validUserIds.includes(u.id)
+            );
+            
+            if (newUsers.length !== state.users.length) {
+              console.log(`[AuthStore] Cleanup removed ${state.users.length - newUsers.length} orphaned users`);
+              set({ users: newUsers });
+            }
+          } catch (error) {
+            console.error('[AuthStore] Error in cleanup:', error);
+          }
+        }
+      },
+
+      getAllUsers: () => {
+        return get().users;
       },
     }),
     {
       name: 'auth-storage',
-      version: 3,
+      version: 5, // Increased version
+      storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState: any, version: number) => {
+        console.log(`[AuthStore] Migrating from version ${version} to 5`);
+        if (version < 5) {
+          return {
+            users: persistedState?.users || [],
+            user: persistedState?.user || null,
+            isLoggedIn: persistedState?.isLoggedIn || false,
+          };
+        }
+        return persistedState;
+      },
     }
   )
 );
