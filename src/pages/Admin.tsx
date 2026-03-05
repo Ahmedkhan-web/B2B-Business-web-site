@@ -278,8 +278,9 @@ const Admin: React.FC = () => {
   };
 
   const getStatusColor = (status: string): string => {
-    // All badges are white with black border and black text
-    return 'bg-white text-black border border-black';
+    // Badges are white with black border and black text in light mode.
+    // When dark mode is active, switch to darker background with white text and light border.
+    return 'bg-white text-black border border-black dark:bg-gray-800 dark:text-white dark:border-white';
   };
 
   const getInitials = (name: string): string => {
@@ -292,15 +293,15 @@ const Admin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex text-black dark:text-white">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-black transition-all duration-300 flex flex-col fixed h-full z-30`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white dark:bg-gray-800 border-r border-black dark:border-white transition-all duration-300 flex flex-col fixed h-full z-30 text-black dark:text-white`}>
         <div className="h-16 flex items-center px-4 border-b border-black">
           <div className={`flex items-center ${sidebarOpen ? 'space-x-2' : 'justify-center w-full'}`}>
             <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center">
               <span className="text-white font-bold text-sm">A</span>
             </div>
-            {sidebarOpen && <span className="font-semibold text-black">Admin Panel</span>}
+            {sidebarOpen && <span className="font-semibold text-black dark:text-white">Admin Panel</span>}
           </div>
         </div>
         
@@ -315,7 +316,7 @@ const Admin: React.FC = () => {
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1 ${
                   isActive 
                     ? 'bg-black text-white' 
-                    : 'text-black hover:bg-gray-100'
+                    : 'text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <Icon className={`w-4 h-4 flex-shrink-0 ${
@@ -339,7 +340,7 @@ const Admin: React.FC = () => {
         <div className="p-2 border-t border-black">
           <button
             onClick={() => setShowLogoutDialog(true)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-black hover:bg-gray-100 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
             {sidebarOpen && "Sign Out"}
@@ -349,30 +350,30 @@ const Admin: React.FC = () => {
         {/* Sidebar Toggle */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute -right-3 top-20 w-6 h-6 bg-white border border-black rounded-full flex items-center justify-center hover:bg-gray-100"
+          className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-gray-700 border border-black dark:border-white rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-600"
         >
-          <ChevronRightIcon className={`w-4 h-4 text-black transition-transform ${!sidebarOpen && 'rotate-180'}`} />
+          <ChevronRightIcon className={`w-4 h-4 text-black dark:text-white transition-transform ${!sidebarOpen && 'rotate-180'}`} />
         </button>
       </aside>
 
       {/* Main Content */}
       <main className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300`}>
         {/* Header */}
-        <header className="h-16 bg-white border-b border-black sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-black capitalize">
+        <header className="h-16 bg-white dark:bg-gray-800 border-b border-black dark:border-white sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between text-black dark:text-white">
+          <h1 className="text-lg font-semibold text-black dark:text-white capitalize">
             {activeTab}
           </h1>
           
           <div className="flex items-center gap-4">
             {/* Search Bar */}
             <div className="hidden md:block relative">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-black opacity-50" />
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-black dark:text-white opacity-50" />
               <Input
                 type="text"
                 placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64 pl-9 bg-white border border-black text-black placeholder:text-black/50 focus-visible:ring-0 focus-visible:border-black"
+                className="w-64 pl-9 bg-white dark:bg-gray-700 border border-black dark:border-white text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus-visible:ring-0 focus-visible:border-black dark:focus-visible:border-white"
               />
             </div>
 
@@ -384,8 +385,8 @@ const Admin: React.FC = () => {
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:block">
-                <p className="text-sm font-medium text-black">Admin</p>
-                <p className="text-xs text-black/70">Administrator</p>
+                <p className="text-sm font-medium text-black dark:text-white">Admin</p>
+                <p className="text-xs text-black/70 dark:text-white/70">Administrator</p>
               </div>
             </div>
           </div>
@@ -402,8 +403,8 @@ const Admin: React.FC = () => {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-black/70 mb-1">Total Buyers</p>
-                        <p className="text-3xl font-bold text-black">{stats.totalBuyers}</p>
+                        <p className="text-sm text-black/70 dark:text-white/70 mb-1">Total Buyers</p>
+                        <p className="text-3xl font-bold text-black dark:text-white">{stats.totalBuyers}</p>
                       </div>
                       <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center bg-white">
                         <Users className="w-6 h-6 text-black" />

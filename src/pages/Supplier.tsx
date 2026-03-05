@@ -1288,6 +1288,14 @@ const Supplier = () => {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Email availability states
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [emailCheckMessage, setEmailCheckMessage] = useState("");
+  const [usernameCheckMessage, setUsernameCheckMessage] = useState("");
+
   const addSupplier = useAdminStore((s) => s.addSupplier);
   const register = useAuthStore((s) => s.register);
   const login = useAuthStore((s) => s.login);
@@ -1326,6 +1334,54 @@ const Supplier = () => {
       setIsEmailVerified(true);
     }
   }, [submitted]);
+
+  // Email availability check with debounce
+  useEffect(() => {
+    const checkEmailAvailability = async () => {
+      if (!email || email.length < 3) {
+        setEmailAvailable(null);
+        setEmailCheckMessage("");
+        return;
+      }
+
+      setIsCheckingEmail(true);
+      
+      // Simulate API call - in real app, this would be an actual API endpoint
+      setTimeout(() => {
+        const isAvailable = useAuthStore.getState().isEmailAvailable(email, 'supplier');
+        setEmailAvailable(isAvailable);
+        setEmailCheckMessage(isAvailable ? "Email is available" : "Email is already registered");
+        setIsCheckingEmail(false);
+      }, 500);
+    };
+
+    const timer = setTimeout(checkEmailAvailability, 500);
+    return () => clearTimeout(timer);
+  }, [email]);
+
+  // Username availability check with debounce
+  useEffect(() => {
+    const checkUsernameAvailability = async () => {
+      if (!username || username.length < 3) {
+        setUsernameAvailable(null);
+        setUsernameCheckMessage("");
+        return;
+      }
+
+      setIsCheckingUsername(true);
+      
+      // Simulate API call
+      setTimeout(() => {
+        const isAvailable = useAuthStore.getState().isUsernameAvailable(username);
+        setUsernameAvailable(isAvailable);
+        setUsernameCheckMessage(isAvailable ? "Username is available" : "Username is already taken");
+        setIsCheckingUsername(false);
+      }, 500);
+    };
+
+    const timer = setTimeout(checkUsernameAvailability, 500);
+    return () => clearTimeout(timer);
+  }, [username]);
 
   const handlePhoneChange = (value: string) => {
     const numbersOnly = value.replace(/\D/g, '');
@@ -1381,8 +1437,10 @@ const Supplier = () => {
     if (!name.trim()) errors.name = "Contact person name is required";
     if (!username.trim()) errors.username = "Username is required";
     else if (username.length < 3) errors.username = "Username must be at least 3 characters";
+    else if (usernameAvailable === false) errors.username = "Username is already taken";
     if (!email.trim()) errors.email = "Email is required";
     else if (!validateEmail(email).valid) errors.email = validateEmail(email).message;
+    else if (emailAvailable === false) errors.email = "Email is already registered";
     if (!phone.trim()) errors.phone = "Phone number is required";
     else if (phoneLengths.length > 0 && !phoneLengths.includes(phone.length)) {
       errors.phone = `Phone number must be ${phoneLengths.join(' or ')} digits`;
@@ -1989,9 +2047,24 @@ const Supplier = () => {
                           placeholder="johndoe" 
                           value={username} 
                           onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))} 
-                          className={`bg-white/5 border-white/10 h-8 sm:h-10 text-xs sm:text-sm ${step1Errors.username ? 'border-destructive' : ''}`} 
+                          className={`bg-white/5 border-white/10 h-8 sm:h-10 text-xs sm:text-sm ${step1Errors.username ? 'border-destructive' : usernameAvailable === false ? 'border-destructive' : usernameAvailable === true ? 'border-green-500' : ''}`} 
                           required 
                         />
+                        {usernameCheckMessage && (
+                          <p className={`text-[8px] sm:text-[10px] mt-1 flex items-center gap-1 ${usernameAvailable ? 'text-green-500' : 'text-destructive'}`}>
+                            {isCheckingUsername ? (
+                              <>
+                                <div className="w-2 h-2 sm:w-3 sm:h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                Checking availability...
+                              </>
+                            ) : (
+                              <>
+                                {usernameAvailable ? <CheckCircle2 className="w-2 h-2 sm:w-3 sm:h-3" /> : <AlertCircle className="w-2 h-2 sm:w-3 sm:h-3" />}
+                                {usernameCheckMessage}
+                              </>
+                            )}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-1 sm:space-y-2">
@@ -2015,9 +2088,24 @@ const Supplier = () => {
                           value={email} 
                           onChange={(e) => { setEmail(e.target.value); setEmailError(""); }} 
                           onBlur={handleEmailBlur}
-                          className={`bg-white/5 border-white/10 h-8 sm:h-10 text-xs sm:text-sm ${step1Errors.email || emailError ? 'border-destructive' : ''}`} 
+                          className={`bg-white/5 border-white/10 h-8 sm:h-10 text-xs sm:text-sm ${step1Errors.email || emailError ? 'border-destructive' : emailAvailable === false ? 'border-destructive' : emailAvailable === true ? 'border-green-500' : ''}`} 
                           required 
                         />
+                        {emailCheckMessage && (
+                          <p className={`text-[8px] sm:text-[10px] mt-1 flex items-center gap-1 ${emailAvailable ? 'text-green-500' : 'text-destructive'}`}>
+                            {isCheckingEmail ? (
+                              <>
+                                <div className="w-2 h-2 sm:w-3 sm:h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                Checking availability...
+                              </>
+                            ) : (
+                              <>
+                                {emailAvailable ? <CheckCircle2 className="w-2 h-2 sm:w-3 sm:h-3" /> : <AlertCircle className="w-2 h-2 sm:w-3 sm:h-3" />}
+                                {emailCheckMessage}
+                              </>
+                            )}
+                          </p>
+                        )}
                         {emailError && (
                           <p className="text-[8px] sm:text-[10px] text-destructive mt-1 flex items-center gap-1">
                             <AlertCircle className="w-2 h-2 sm:w-3 sm:h-3" />{emailError}
@@ -2349,6 +2437,7 @@ const Supplier = () => {
                   <Button 
                     type="submit" 
                     className={`${step === 3 ? 'btn-gradient-gold' : 'btn-gradient-teal'} flex-1 h-8 sm:h-10 text-xs sm:text-sm order-1 sm:order-2`}
+                    disabled={step === 1 && (emailAvailable === false || usernameAvailable === false)}
                   >
                     {step === 1 && (emailVerified ? "Next: Products & Capabilities" : "Verify Email & Continue")}
                     {step === 2 && "Next: Trade Information"}
